@@ -1,3 +1,6 @@
 [submodule "inc/websocketpp"]
 	path = inc/websocketpp
 	url = https://github.com/zaphoyd/websocketpp.git
+[submodule "inc/protected_queue"]
+	path = inc/protected_queue
+	url = git@github.com:hoytech/protected_queue.git
