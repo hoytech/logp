@@ -1,7 +1,8 @@
 W        = -Wall -Wextra
 OPT      = -O2 -g
 STD      = -std=c++11
-CXXFLAGS = $(STD) $(OPT) $(W) -fPIC -Iinc $(XCXXFLAGS)
+INC      = -Iinc -Iinc/websocketpp
+CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
 LDFLAGS  =
 
 PROGOBJS    = main.o websocket.o

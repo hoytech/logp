@@ -1,4 +1,6 @@
-#include <iostream>
+#include <unistd.h> // FIXME
+
+#include <iostream> // FIXME
 
 #include "protected_queue/protected_queue.h"
 
@@ -7,9 +9,14 @@
 
 
 int main() {
-    hoytech::protected_queue<std::string> q;
+    //hoytech::protected_queue<std::string> q;
 
-    websocket::connection c("ws://localhost:8001", &q);
+    std::string uri("ws://localhost:8001");
+
+    logp::websocket::connection c(uri);
+    c.start();
+
+    sleep(100);
 
     return 0;
 }

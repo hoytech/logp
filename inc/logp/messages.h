@@ -10,7 +10,7 @@ class websocket_input {
     // Input
 
     std::string data;
-}
+};
 
 class websocket_output {
   public:
