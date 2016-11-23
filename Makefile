@@ -4,7 +4,7 @@ STD      = -std=c++11
 CXXFLAGS = $(STD) $(OPT) $(W) -fPIC -Iinc $(XCXXFLAGS)
 LDFLAGS  =
 
-PROGOBJS    = main.o
+PROGOBJS    = main.o websocket.o
 
 
 ifeq ($(wildcard inc/protected_queue/protected_queue.h),)

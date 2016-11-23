@@ -7,4 +7,4 @@ make XCXXFLAGS="-fsanitize=address" -j 4
 
 ## RUN
 
-LD_PRELOAD=`locate libasan.so | head -1` ./logp "$@"
+LD_PRELOAD=libasan.so.2 ./logp "$@"
