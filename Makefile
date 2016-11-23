@@ -1,4 +1,4 @@
-W        = -Wall
+W        = -Wall -Wextra
 OPT      = -O2 -g
 STD      = -std=c++11
 CXXFLAGS = $(STD) $(OPT) $(W) -fPIC -Iinc $(XCXXFLAGS)
