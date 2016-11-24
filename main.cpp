@@ -18,11 +18,6 @@
 logp::config conf;
 
 
-// getopt
-
-extern char *optarg;
-
-
 
 void usage() {
     std::cerr << "Usage: ..." << std::endl;
@@ -42,7 +37,8 @@ int main(int argc, char **argv) {
 
     struct option long_options[] = {
         {"version", no_argument, 0, 'V'},
-        {"config", no_argument, 0, 'c'},
+        {"help", no_argument, 0, 'h'},
+        {"config", required_argument, 0, 'c'},
         {"url", required_argument, 0, 0},
         {"token", required_argument, 0, 0},
         {0, 0, 0, 0}
@@ -51,19 +47,23 @@ int main(int argc, char **argv) {
     while ((arg = getopt_long_only(argc, argv, "+c:", long_options, &option_index)) != -1) {
         switch (arg) {
           case '?':
+          case 'h':
             usage();
 
           case 0:
             if (strcmp(long_options[option_index].name, "url") == 0) {
-                opt_url = std::string(long_options[option_index].name);
+                opt_url = std::string(optarg);
             } else if (strcmp(long_options[option_index].name, "token") == 0) {
-                opt_token = std::string(long_options[option_index].name);
+                opt_token = std::string(optarg);
             }
             break;
 
           case 'c':
-            opt_config = std::string(long_options[option_index].name);
+            opt_config = std::string(optarg);
             break;
+
+          default:
+            exit(1);
         };
     }
 
@@ -112,6 +112,21 @@ int main(int argc, char **argv) {
         std::cerr << "No 'token' option specified" << std::endl;
         usage();
     }
+
+    if (optind >= argc) {
+        std::cerr << "Expected a command, ie 'logp run ...'" << std::endl;
+        usage();
+    }
+
+    std::string command(argv[optind]);
+
+    if (command == "run") {
+    } else {
+        std::cerr << "Unknown command: " << command << std::endl;
+        usage();
+    }
+
+
 
 /*
     //std::string uri("ws://localhost:8001");
