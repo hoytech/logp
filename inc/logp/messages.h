@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+
+
 namespace logp { namespace msg {
 
 

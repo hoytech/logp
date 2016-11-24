@@ -2,8 +2,6 @@
 
 #include <iostream> // FIXME
 
-#include "protected_queue/protected_queue.h"
-
 #include "logp/messages.h"
 #include "logp/websocket.h"
 
@@ -11,9 +9,8 @@
 
 
 int main() {
-    //hoytech::protected_queue<std::string> q;
-
-    std::string uri("ws://localhost:8001");
+    //std::string uri("ws://localhost:8001");
+    std::string uri("ws://localhost:8000/ws/");
 
     logp::websocket::worker c(uri);
     c.run();

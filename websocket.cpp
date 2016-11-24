@@ -121,8 +121,8 @@ connection::connection(websocketpp::uri &uri) {
         drain_pending_messages();
     });
 
-    wspp_client.set_message_handler([this](websocketpp::connection_hdl, websocketpp::client<websocketpp::config::core>::message_ptr) {
-        std::cerr << "BING" << std::endl;
+    wspp_client.set_message_handler([this](websocketpp::connection_hdl, websocketpp::client<websocketpp::config::core>::message_ptr msg) {
+        std::cerr << "BING: " << msg->get_payload() << std::endl;
     });
 
     websocketpp::lib::error_code ec;
