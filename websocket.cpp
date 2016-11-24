@@ -68,6 +68,13 @@ void worker::run_event_loop() {
 
 
         if (pollfds[0].revents & POLLIN) {
+            char junk[1];
+
+            ssize_t ret = read(input_queue_activity_pipe[0], junk, 1);
+            if (ret != 1 && (errno != EAGAIN || errno != EINTR)) {
+                throw std::runtime_error(std::string("error reading from triggering pipe: ") + strerror(errno));
+            }
+
             auto temp_queue = input_queue.pop_all_no_wait();
 
             for (auto &inp : temp_queue) {

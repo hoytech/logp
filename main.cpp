@@ -2,11 +2,12 @@
 
 #include <iostream> // FIXME
 
-//#include "nlohmann/json.hpp"
 #include "protected_queue/protected_queue.h"
 
 #include "logp/messages.h"
 #include "logp/websocket.h"
+
+#include "nlohmann/json.hpp"
 
 
 int main() {
@@ -18,7 +19,9 @@ int main() {
     c.run();
 
     {
-        std::string data("{}");
+        nlohmann::json j = {{ "id", 123 }, { "op", "get" }};
+        std::string data = j.dump();
+        data += "\n{}";
         logp::msg::websocket_input m(std::move(data));
         c.input_queue.push_move(m);
         c.trigger_input_queue();
