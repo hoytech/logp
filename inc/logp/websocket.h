@@ -2,6 +2,8 @@
 
 #include <string>
 #include <thread>
+#include <sstream>
+#include <vector>
 
 #include "websocketpp/config/core.hpp"
 #include "websocketpp/client.hpp"
@@ -14,29 +16,56 @@
 namespace logp { namespace websocket {
 
 
-enum class tls_type { SECURE, NO_VERIFY };
+enum class tls_mode { SECURE, NO_VERIFY };
 
-class connection {
+class worker {
   public:
-    connection(std::string &uri_) : uri(uri_) {}
+    worker(std::string &uri_raw) : uri(uri_raw) {
+        setup();
+    }
 
-    void start();
+    void run();
     void trigger_input_queue();
 
-    tls_type tls_mode = tls_type::SECURE;
+    tls_mode my_tls_mode = tls_mode::SECURE;
     hoytech::protected_queue<logp::msg::websocket_input> input_queue;
 
   private:
-    void run();
-    void connect();
+    void setup();
+    void run_event_loop();
 
     websocketpp::uri uri;
-    websocketpp::client<websocketpp::config::core> wspp_client;
 
-    uint64_t next_request_id = 1;
-    int connection_fd = -1;
-    int input_queue_activity_pipe[2];
     std::thread t;
+    uint64_t next_request_id = 1;
+    int input_queue_activity_pipe[2];
+};
+
+
+
+class connection {
+  public:
+    connection(websocketpp::uri &uri);
+    ~connection();
+
+    void send_message_move(std::string &msg);
+
+    bool attempt_write(); // returns true if there is more to be written
+    void attempt_read();
+
+    websocketpp::client<websocketpp::config::core> wspp_client;
+    websocketpp::client<websocketpp::config::core>::connection_ptr wspp_conn;
+    int connection_fd = -1;
+
+  private:
+    void open_socket(websocketpp::uri &uri);
+
+    bool ws_connected = false;
+    std::vector<std::string> pending_messages;
+    void drain_pending_messages();
+
+    std::stringstream output_buffer_stream;
+    std::string output_buffer;
 };
 
 

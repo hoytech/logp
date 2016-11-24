@@ -5,7 +5,7 @@ INC      = -Iinc -Iinc/websocketpp
 CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
 LDFLAGS  =
 
-PROGOBJS    = main.o websocket.o
+PROGOBJS    = main.o websocket.o util.o
 
 
 ifeq ($(wildcard inc/protected_queue/protected_queue.h),)
