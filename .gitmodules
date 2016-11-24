@@ -4,3 +4,6 @@
 [submodule "inc/protected_queue"]
 	path = inc/protected_queue
 	url = git@github.com:hoytech/protected_queue.git
+[submodule "lib/yaml-cpp"]
+	path = lib/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git
