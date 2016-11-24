@@ -17,6 +17,9 @@ ifeq ($(wildcard inc/protected_queue/protected_queue.h),)
 endif
 
 
+## For distribution: -static-libgcc -static-libstdc++
+
+
 .PHONY: all clean test
 all: logp
 

@@ -30,8 +30,6 @@ void worker::setup() {
 
 
 void worker::run() {
-    std::cerr << "HOST = " << uri.get_port() << std::endl;
-
     t = std::thread([this]() {
         while (1) {
             try {
@@ -50,6 +48,7 @@ void worker::run_event_loop() {
 
     while(1) {
         struct pollfd pollfds[2];
+
         bool want_write = c.attempt_write();
 
 
@@ -244,7 +243,6 @@ void connection::attempt_read() {
         throw std::runtime_error(std::string("socket closed"));
     }
 
-std::cerr << "READ: " << std::string(buf, ret) << std::endl;
     wspp_conn->read_some(buf, ret);
 }
 
