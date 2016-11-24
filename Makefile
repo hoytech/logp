@@ -1,11 +1,12 @@
 W        = -Wall -Wextra
 OPT      = -O2 -g
 STD      = -std=c++11
-INC      = -Iinc -Iinc/websocketpp
+INC      = -Iinc -Iinc/websocketpp -Ilib/yaml-cpp/include
 CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
 LDFLAGS  =
 
-PROGOBJS    = main.o websocket.o util.o
+BUNDLED_LIBS = lib/yaml-cpp/build/libyaml-cpp.a
+PROGOBJS    = main.o websocket.o util.o config.o
 
 
 ifeq ($(wildcard inc/protected_queue/protected_queue.h),)
@@ -20,14 +21,25 @@ endif
 ## For distribution: -static-libgcc -static-libstdc++
 
 
-.PHONY: all clean test
+.PHONY: all clean realclean test
 all: logp
 
 clean:
 	rm -f *.o *.so logp
 
-logp: $(PROGOBJS) Makefile
-	$(CXX) $(CXXFLAGS) -L. $(LDFLAGS) $(PROGOBJS) -lpthread -o $@ 
+realclean: clean
+	rm -rf lib/yaml-cpp/build/
+
+logp: $(PROGOBJS) Makefile $(BUNDLED_LIBS)
+	$(CXX) $(CXXFLAGS) -L. $(LDFLAGS) $(PROGOBJS) -lpthread -o $@ $(BUNDLED_LIBS)
 
 %.o: %.cpp inc/logp/*.h Makefile
 	$(CXX) $(CXXFLAGS) -c $<
+
+
+## 3rd party deps
+
+lib/yaml-cpp/build/libyaml-cpp.a:
+	mkdir -p lib/yaml-cpp/build/
+	(cd lib/yaml-cpp/build/ ; cmake ..)
+	(cd lib/yaml-cpp/build/ ; make yaml-cpp)

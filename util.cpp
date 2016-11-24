@@ -2,6 +2,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 #include <stdexcept>
 
@@ -18,6 +20,18 @@ void make_fd_nonblocking(int fd) {
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
         throw std::runtime_error(std::string("unable to fcntl(F_GETFL): ") + strerror(errno));
     }
+}
+
+std::string get_home_dir() {
+    char *home_dir = getenv("HOME");
+
+    if (home_dir) return std::string(home_dir);
+
+    home_dir = getpwuid(getuid())->pw_dir;
+
+    if (home_dir) return std::string(home_dir);
+
+    return std::string("");
 }
 
 }}
