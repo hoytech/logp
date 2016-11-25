@@ -26,4 +26,17 @@ class websocket_output {
 
 
 
+enum class cmd_run_msg_type { PROCESS_EXITED };
+
+class cmd_run {
+  public:
+    cmd_run(cmd_run_msg_type type_) : type(type_) {}
+
+    cmd_run_msg_type type;
+
+    int pid = 0;
+};
+
+
+
 }}

@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
     std::string command(argv[optind]);
 
     if (command == "run") {
-        logp::cmd::run(argc-optind, argv+optind);
+        logp::cmd::run(argc-optind-1, argv+optind+1);
     } else {
         std::cerr << "Unknown command: " << command << std::endl;
         usage();
