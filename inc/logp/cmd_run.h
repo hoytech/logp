@@ -3,6 +3,10 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include <iostream>
+
+#include "logp/signalwatcher.h"
+
 
 namespace logp { namespace cmd {
 
@@ -43,6 +47,17 @@ class run {
                 break;
             };
         }
+
+
+        logp::signal_watcher sigwatcher;
+
+        sigwatcher.subscribe(SIGCHLD, []() {
+            std::cerr << "GOT SIGCHLD" << std::endl;
+        });
+
+        sigwatcher.run();
+
+        pause();
     }
 };
 

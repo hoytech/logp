@@ -20,8 +20,7 @@ namespace logp { namespace websocket {
 
 
 void worker::setup() {
-    int rc = pipe(input_queue_activity_pipe); // FIXME: make nonblocking
-
+    int rc = pipe(input_queue_activity_pipe);
     if (rc) throw std::runtime_error(std::string("unable to create pipe: ") + strerror(errno));
 
     logp::util::make_fd_nonblocking(input_queue_activity_pipe[0]);
