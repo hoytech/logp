@@ -5,14 +5,12 @@
 #include <iostream>
 #include <string>
 
-#include "yaml-cpp/yaml.h"
-
 #include "logp/messages.h"
 #include "logp/websocket.h"
 #include "logp/config.h"
 #include "logp/util.h"
 
-//#include "nlohmann/json.hpp" //FIXME
+#include "logp/cmd_run.h"
 
 
 logp::config conf;
@@ -20,30 +18,30 @@ logp::config conf;
 
 
 void usage() {
-    std::cerr << "Usage: ..." << std::endl;
+    std::cerr << "Usage: logp ..." << std::endl;
     exit(1);
 }
 
 
 int main(int argc, char **argv) {
-    int arg, option_index;
-
-
     // Argument parsing
+
+    int arg, option_index;
 
     std::string opt_config;
     std::string opt_url;
     std::string opt_token;
 
     struct option long_options[] = {
-        {"version", no_argument, 0, 'V'},
         {"help", no_argument, 0, 'h'},
+        {"version", no_argument, 0, 'V'},
         {"config", required_argument, 0, 'c'},
         {"url", required_argument, 0, 0},
         {"token", required_argument, 0, 0},
         {0, 0, 0, 0}
     };
 
+    optind = 1;
     while ((arg = getopt_long_only(argc, argv, "+c:", long_options, &option_index)) != -1) {
         switch (arg) {
           case '?':
@@ -121,6 +119,7 @@ int main(int argc, char **argv) {
     std::string command(argv[optind]);
 
     if (command == "run") {
+        logp::cmd::run(argc-optind, argv+optind);
     } else {
         std::cerr << "Unknown command: " << command << std::endl;
         usage();
