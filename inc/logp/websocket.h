@@ -4,6 +4,7 @@
 #include <thread>
 #include <sstream>
 #include <vector>
+#include <functional>
 
 #include "websocketpp/config/core.hpp"
 #include "websocketpp/client.hpp"
@@ -25,20 +26,21 @@ class worker {
     }
 
     void run();
-    void trigger_input_queue();
+    send_message_move(std::string &msg, std::function<void()> cb);
 
     tls_mode my_tls_mode = tls_mode::SECURE;
-    hoytech::protected_queue<logp::msg::websocket_input> input_queue;
 
   private:
     void setup();
     void run_event_loop();
+    void trigger_input_queue();
 
     websocketpp::uri uri;
 
     std::thread t;
     uint64_t next_request_id = 1;
     int input_queue_activity_pipe[2];
+    hoytech::protected_queue<logp::msg::websocket_input> input_queue;
 };
 
 

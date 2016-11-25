@@ -10,7 +10,7 @@
 #include "logp/config.h"
 #include "logp/util.h"
 
-#include "logp/cmd_run.h"
+#include "logp/cmd/run.h"
 
 
 logp::config conf;

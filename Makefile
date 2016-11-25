@@ -33,6 +33,8 @@ realclean: clean
 logp: $(PROGOBJS) Makefile $(BUNDLED_LIBS)
 	$(CXX) $(CXXFLAGS) -L. $(LDFLAGS) $(PROGOBJS) -lpthread -o $@ $(BUNDLED_LIBS)
 
+main.o: inc/logp/cmd/*.h
+
 %.o: %.cpp inc/logp/*.h Makefile
 	$(CXX) $(CXXFLAGS) -c $<
 

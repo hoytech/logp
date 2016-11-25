@@ -35,6 +35,7 @@ class cmd_run {
     cmd_run_msg_type type;
 
     int pid = 0;
+    uint64_t timestamp = 0;
 };
 
 
