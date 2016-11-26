@@ -130,8 +130,7 @@ void connection::setup() {
 
     open_socket(uri);
 
-    wspp_client.set_access_channels(websocketpp::log::alevel::all);
-    wspp_client.clear_access_channels(websocketpp::log::alevel::frame_payload);
+    wspp_client.set_access_channels(websocketpp::log::alevel::none);
 
     wspp_client.register_ostream(&output_buffer_stream);
 

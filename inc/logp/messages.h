@@ -36,6 +36,7 @@ class cmd_run {
 
     // PROCESS_EXITED
     int pid = 0;
+    int wait_status = 0;
     uint64_t timestamp = 0;
 
     // WEBSOCKET_RESPONSE

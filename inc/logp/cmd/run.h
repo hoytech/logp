@@ -76,6 +76,7 @@ class run {
             if (pid > 0) {
                 logp::msg::cmd_run m(logp::msg::cmd_run_msg_type::PROCESS_EXITED);
                 m.pid = pid;
+                m.wait_status = status;
                 m.timestamp = (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
                 cmd_run_queue.push_move(m);
             }
@@ -116,13 +117,65 @@ class run {
         }
 
 
+
+        bool pid_exited = false;
+        uint64_t end_timestamp = 0;
+        bool have_event_id = false;
+        uint64_t event_id = 0;
+        bool sent_end_message = false;
+        int wait_status = 0;
+
         while (1) {
             logp::msg::cmd_run m = cmd_run_queue.pop();
 
             if (m.type == logp::msg::cmd_run_msg_type::PROCESS_EXITED) {
-                std::cerr << "PID " << m.pid << " exited! took " << (m.timestamp - start_timestamp) << " usecs" << std::endl;
+                if (m.pid == fork_ret) {
+                    end_timestamp = m.timestamp;
+                    wait_status = m.wait_status;
+                    pid_exited = true;
+                }
             } else if (m.type == logp::msg::cmd_run_msg_type::WEBSOCKET_RESPONSE) {
-                std::cerr << "GOT WS RESP " << m.response << std::endl;
+                if (!sent_end_message) {
+                    try {
+                        auto j = nlohmann::json::parse(m.response);
+
+                        if (j["status"] == "ok") {
+                            event_id = j["event_id"];
+                            have_event_id = true;
+                        } else {
+                            std::cerr << "status was not OK on end response" << std::endl;
+                        }
+                    } catch (std::exception &e) {
+                        std::cerr << "Unable to parse JSON body to extract event id" << std::endl;
+                    }
+                } else {
+                    try {
+                        auto j = nlohmann::json::parse(m.response);
+
+                        if (j["status"] == "ok") {
+                            exit(WEXITSTATUS(wait_status));
+                        } else {
+                            std::cerr << "status was not OK on end response" << std::endl;
+                        }
+                    } catch (std::exception &e) {
+                        std::cerr << "Unable to parse JSON body to confirm end" << std::endl;
+                    }
+                }
+            }
+
+            if (pid_exited && have_event_id && !sent_end_message) {
+                {
+                    nlohmann::json j = {{ "event_id", event_id }, { "end", end_timestamp }};
+                    std::string op("add");
+                    std::string msg_str = j.dump();
+                    ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
+                        logp::msg::cmd_run m(logp::msg::cmd_run_msg_type::WEBSOCKET_RESPONSE);
+                        m.response = resp;
+                        cmd_run_queue.push_move(m);
+                    });
+                }
+
+                sent_end_message = true;
             }
         }
     }
