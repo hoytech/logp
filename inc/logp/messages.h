@@ -26,7 +26,7 @@ class websocket_output {
 
 
 
-enum class cmd_run_msg_type { PROCESS_EXITED };
+enum class cmd_run_msg_type { PROCESS_EXITED, WEBSOCKET_RESPONSE };
 
 class cmd_run {
   public:
@@ -34,8 +34,12 @@ class cmd_run {
 
     cmd_run_msg_type type;
 
+    // PROCESS_EXITED
     int pid = 0;
     uint64_t timestamp = 0;
+
+    // WEBSOCKET_RESPONSE
+    std::string response;
 };
 
 

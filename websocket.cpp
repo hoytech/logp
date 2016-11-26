@@ -9,6 +9,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "nlohmann/json.hpp"
+
 #include "logp/util.h"
 #include "logp/websocket.h"
 
@@ -28,6 +30,23 @@ void worker::setup() {
 }
 
 
+void worker::send_message_move(std::string &op, std::string &msg, std::function<void(std::string &)> cb) {
+    uint64_t request_id = next_request_id++;
+
+    active_requests.emplace(std::piecewise_construct,
+                            std::forward_as_tuple(request_id),
+                            std::forward_as_tuple(request_id, cb));
+
+    nlohmann::json j = {{ "id", request_id }, { "op", op }};
+    std::string full_msg = j.dump();
+    full_msg += "\n";
+    full_msg += msg;
+
+    input_queue.push_move(full_msg);
+    trigger_input_queue();
+}
+
+
 void worker::run() {
     t = std::thread([this]() {
         while (1) {
@@ -43,7 +62,7 @@ void worker::run() {
 
 
 void worker::run_event_loop() {
-    connection c(uri);
+    connection c(this);
 
     while(1) {
         struct pollfd pollfds[2];
@@ -106,7 +125,9 @@ void worker::trigger_input_queue() {
 
 
 
-connection::connection(websocketpp::uri &uri) {
+void connection::setup() {
+    websocketpp::uri &uri = parent_worker->uri;
+
     open_socket(uri);
 
     wspp_client.set_access_channels(websocketpp::log::alevel::all);
@@ -120,7 +141,36 @@ connection::connection(websocketpp::uri &uri) {
     });
 
     wspp_client.set_message_handler([this](websocketpp::connection_hdl, websocketpp::client<websocketpp::config::core>::message_ptr msg) {
-        std::cerr << "BING: " << msg->get_payload() << std::endl;
+        //std::cerr << "BING: " << msg->get_payload() << std::endl;
+        std::stringstream ss(msg->get_payload());
+
+        uint64_t request_id;
+        bool fin = false;
+        std::string body_str;
+
+        try {
+            std::string header_str;
+            std::getline(ss, header_str);
+
+            auto json = nlohmann::json::parse(header_str);
+
+            request_id = json["id"];
+            if (json.count("fin")) fin = json["fin"];
+
+            std::getline(ss, body_str);
+        } catch (std::exception &e) {
+            std::cerr << "logp: unable to header, ignoring: " << e.what() << std::endl;
+            return;
+        }
+
+        auto res = parent_worker->active_requests.find(request_id);
+
+        if (res == parent_worker->active_requests.end()) {
+            std::cerr << "logp: response came for unknown request id, ignoring" << std::endl;
+            return;
+        }
+
+        res->second.cb(body_str);
     });
 
     websocketpp::lib::error_code ec;
@@ -128,6 +178,13 @@ connection::connection(websocketpp::uri &uri) {
     wspp_conn = wspp_client.get_connection(uri_str, ec);
 
     wspp_client.connect(wspp_conn);
+}
+
+
+
+connection::~connection() {
+    if (connection_fd != -1) close(connection_fd);
+    connection_fd = -1;
 }
 
 
@@ -195,12 +252,6 @@ void connection::open_socket(websocketpp::uri &uri) {
 
     throw err;
     throw std::runtime_error(err);
-}
-
-
-connection::~connection() {
-    if (connection_fd != -1) close(connection_fd);
-    connection_fd = -1;
 }
 
 

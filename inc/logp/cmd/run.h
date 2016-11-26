@@ -11,6 +11,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "nlohmann/json.hpp"
+
 #include "logp/signalwatcher.h"
 #include "logp/messages.h"
 #include "logp/websocket.h"
@@ -102,11 +104,25 @@ class run {
         }
 
 
+        {
+            nlohmann::json j = {{ "start", start_timestamp }, { "data", {{ "stuff", 1 }} }};
+            std::string op("add");
+            std::string msg_str = j.dump();
+            ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
+                logp::msg::cmd_run m(logp::msg::cmd_run_msg_type::WEBSOCKET_RESPONSE);
+                m.response = resp;
+                cmd_run_queue.push_move(m);
+            });
+        }
+
+
         while (1) {
             logp::msg::cmd_run m = cmd_run_queue.pop();
 
             if (m.type == logp::msg::cmd_run_msg_type::PROCESS_EXITED) {
                 std::cerr << "PID " << m.pid << " exited! took " << (m.timestamp - start_timestamp) << " usecs" << std::endl;
+            } else if (m.type == logp::msg::cmd_run_msg_type::WEBSOCKET_RESPONSE) {
+                std::cerr << "GOT WS RESP " << m.response << std::endl;
             }
         }
     }

@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #include <functional>
+#include <unordered_map>
 
 #include "websocketpp/config/core.hpp"
 #include "websocketpp/client.hpp"
@@ -17,6 +18,18 @@
 namespace logp { namespace websocket {
 
 
+
+class request {
+  public:
+    request(uint64_t request_id_, std::function<void(std::string &)> cb_) : request_id(request_id_), cb(cb_) {}
+
+    uint64_t request_id;
+    std::function<void(std::string &)> cb;
+};
+
+
+
+
 enum class tls_mode { SECURE, NO_VERIFY };
 
 class worker {
@@ -26,16 +39,18 @@ class worker {
     }
 
     void run();
-    send_message_move(std::string &msg, std::function<void()> cb);
+    void send_message_move(std::string &op, std::string &msg, std::function<void(std::string &)> cb);
 
     tls_mode my_tls_mode = tls_mode::SECURE;
+    websocketpp::uri uri;
+
+    // Accessed by connection
+    std::unordered_map<uint64_t, request> active_requests;
 
   private:
     void setup();
     void run_event_loop();
     void trigger_input_queue();
-
-    websocketpp::uri uri;
 
     std::thread t;
     uint64_t next_request_id = 1;
@@ -45,9 +60,12 @@ class worker {
 
 
 
+
 class connection {
   public:
-    connection(websocketpp::uri &uri);
+    connection(worker *parent_worker_) : parent_worker(parent_worker_) {
+        setup();
+    }
     ~connection();
 
     void send_message_move(std::string &msg);
@@ -60,7 +78,10 @@ class connection {
     int connection_fd = -1;
 
   private:
+    void setup();
     void open_socket(websocketpp::uri &uri);
+
+    worker *parent_worker;
 
     bool ws_connected = false;
     std::vector<std::string> pending_messages;
