@@ -106,7 +106,7 @@ class run {
 
 
         {
-            nlohmann::json j = {{ "start", start_timestamp }, { "data", {{ "stuff", 1 }} }};
+            nlohmann::json j = {{ "st", start_timestamp }, { "da", {{ "stuff", 1 }} }};
             std::string op("add");
             std::string msg_str = j.dump();
             ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
@@ -140,7 +140,7 @@ class run {
                         auto j = nlohmann::json::parse(m.response);
 
                         if (j["status"] == "ok") {
-                            event_id = j["event_id"];
+                            event_id = j["ev"];
                             have_event_id = true;
                         } else {
                             std::cerr << "status was not OK on end response" << std::endl;
@@ -165,7 +165,7 @@ class run {
 
             if (pid_exited && have_event_id && !sent_end_message) {
                 {
-                    nlohmann::json j = {{ "event_id", event_id }, { "end", end_timestamp }};
+                    nlohmann::json j = {{ "ev", event_id }, { "en", end_timestamp }};
                     std::string op("add");
                     std::string msg_str = j.dump();
                     ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
