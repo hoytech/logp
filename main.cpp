@@ -93,10 +93,18 @@ int main(int argc, char **argv) {
         usage();
     }
 
+    if (conf.apikey.size() < 3 || conf.apikey.find('-') == std::string::npos) {
+        std::cerr << "apikey has incorrect format" << std::endl;
+        usage();
+    }
+
     if (optind >= argc) {
         std::cerr << "Expected a command, ie 'logp run ...'" << std::endl;
         usage();
     }
+
+
+    // Execute command
 
     std::string command(argv[optind]);
 
@@ -107,26 +115,6 @@ int main(int argc, char **argv) {
         usage();
     }
 
-
-
-/*
-    //std::string uri("ws://localhost:8001");
-    std::string uri("ws://localhost:8000/ws/");
-
-    logp::websocket::worker c(uri);
-    c.run();
-
-    {
-        nlohmann::json j = {{ "id", 123 }, { "op", "get" }};
-        std::string data = j.dump();
-        data += "\n{}";
-        logp::msg::websocket_input m(std::move(data));
-        c.input_queue.push_move(m);
-        c.trigger_input_queue();
-    }
-
-    sleep(100);
-*/
 
     return 0;
 }

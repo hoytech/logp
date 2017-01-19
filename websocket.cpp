@@ -37,7 +37,7 @@ void worker::send_message_move(std::string &op, std::string &msg, std::function<
                             std::forward_as_tuple(request_id),
                             std::forward_as_tuple(request_id, cb));
 
-    nlohmann::json j = {{ "id", request_id }, { "op", op }, { "tk", "asdf" }};
+    nlohmann::json j = {{ "id", request_id }, { "op", op }, { "tk", token }};
     std::string full_msg = j.dump();
     full_msg += "\n";
     full_msg += msg;
@@ -127,13 +127,16 @@ void init_openssl_library() {
     static bool initialized = false;
 
     if (initialized) return;
-    initialized = true;
 
+    (void)SSL_library_init();
     SSL_load_error_strings();
-    ERR_load_crypto_strings();
 
-    OpenSSL_add_all_algorithms();
-    SSL_library_init();
+    initialized = true;
+}
+
+
+static void throw_ssl_exception(std::string msg) {
+    throw std::runtime_error(std::string("OpenSSL error ") + msg + ": (" + std::string(ERR_error_string(ERR_get_error(), nullptr)) + ")");
 }
 
 
@@ -146,15 +149,35 @@ void connection::setup() {
 
     if (use_tls) {
         init_openssl_library();
-        ctx = SSL_CTX_new(TLSv1_method());
+
+        const SSL_METHOD* method = SSLv23_method();
+        if (!method) throw_ssl_exception("unable to load method");
+
+        ctx = SSL_CTX_new(method);
+        if (!ctx) throw_ssl_exception("unable to create context");
+
+        if (!parent_worker->tls_no_verify) {
+            SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
+            SSL_CTX_set_verify_depth(ctx, 4);
+            if (SSL_CTX_set_default_verify_paths(ctx) != 1) throw_ssl_exception("unable to set default verify paths");
+        }
+
+        SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION);
+
         ssl = SSL_new(ctx);
+        if (!ssl) throw_ssl_exception("unable to create new SSL instance");
+
+        if (SSL_set_cipher_list(ssl, "HIGH:!aNULL:!kRSA:!PSK:!SRP:!MD5:!RC4") != 1) throw_ssl_exception("unable to set cipher list");
+        if (SSL_set_tlsext_host_name(ssl, orig_uri.get_host().c_str()) != 1) throw_ssl_exception("unable to set hostname");
         SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+
         bio = BIO_new_socket(connection_fd, BIO_NOCLOSE);
+        if (!bio) throw_ssl_exception("unable to create BIO");
         SSL_set_bio(ssl, bio, bio);
 
         int ret = SSL_connect(ssl);
         if (ret <= 0) {
-             throw std::runtime_error(std::string("SSL handshake failure"));
+             throw_ssl_exception("handshake failure");
         }
 
         SSL_set_mode(ssl, SSL_get_mode(ssl) & (~SSL_MODE_AUTO_RETRY));

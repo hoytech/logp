@@ -21,12 +21,14 @@ bool load_config_file(std::string file, config &c) {
 
     for(auto it=node.begin(); it!=node.end(); it++) {
         std::string k = it->first.as<std::string>();
-        std::string v = it->second.as<std::string>();
+        auto &v = it->second;
 
         if (k == "endpoint") {
-            c.endpoint = v;
+            c.endpoint = v.as<std::string>();
         } else if (k == "apikey") {
-            c.apikey = v;
+            c.apikey = v.as<std::string>();
+        } else if (k == "tls_no_verify") {
+            c.tls_no_verify = v.as<bool>();
         } else {
             std::cerr << "logp: warning: Unrecognized config option (" + k + ") in file " + file << std::endl;
         }

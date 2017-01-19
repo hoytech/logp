@@ -34,21 +34,20 @@ class request {
 
 
 
-enum class tls_mode { SECURE, NO_VERIFY };
-
 class worker {
   public:
-    worker(std::string &uri_raw) : uri(uri_raw) {
+    worker(std::string &uri_raw, std::string &token_) : uri(uri_raw), token(token_) {
         setup();
     }
 
     void run();
     void send_message_move(std::string &op, std::string &msg, std::function<void(std::string &)> cb);
 
-    tls_mode my_tls_mode = tls_mode::SECURE;
     websocketpp::uri uri;
+    std::string token;
 
     // Accessed by connection
+    bool tls_no_verify = false;
     std::unordered_map<uint64_t, request> active_requests;
 
   private:
