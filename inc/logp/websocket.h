@@ -10,12 +10,14 @@
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
+#include <openssl/x509.h>
 
 #include "websocketpp/config/core.hpp"
 #include "websocketpp/client.hpp"
 #include "websocketpp/uri.hpp"
 #include "protected_queue/protected_queue.h"
 
+#include "logp/openssl_hostname_validation.h"
 #include "logp/messages.h"
 
 

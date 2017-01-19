@@ -157,9 +157,9 @@ void connection::setup() {
         if (!ctx) throw_ssl_exception("unable to create context");
 
         if (!parent_worker->tls_no_verify) {
+            if (SSL_CTX_set_default_verify_paths(ctx) != 1) throw_ssl_exception("unable to set default verify paths");
             SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
             SSL_CTX_set_verify_depth(ctx, 4);
-            if (SSL_CTX_set_default_verify_paths(ctx) != 1) throw_ssl_exception("unable to set default verify paths");
         }
 
         SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION);
@@ -168,7 +168,7 @@ void connection::setup() {
         if (!ssl) throw_ssl_exception("unable to create new SSL instance");
 
         if (SSL_set_cipher_list(ssl, "HIGH:!aNULL:!kRSA:!PSK:!SRP:!MD5:!RC4") != 1) throw_ssl_exception("unable to set cipher list");
-        if (SSL_set_tlsext_host_name(ssl, orig_uri.get_host().c_str()) != 1) throw_ssl_exception("unable to set hostname");
+        if (SSL_set_tlsext_host_name(ssl, orig_uri.get_host().c_str()) != 1) throw_ssl_exception("unable to set hostname"); // For SNI
         SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
 
         bio = BIO_new_socket(connection_fd, BIO_NOCLOSE);
@@ -178,6 +178,15 @@ void connection::setup() {
         int ret = SSL_connect(ssl);
         if (ret <= 0) {
              throw_ssl_exception("handshake failure");
+        }
+
+        if (!parent_worker->tls_no_verify) {
+            if (SSL_get_verify_result(ssl) != X509_V_OK) throw_ssl_exception("couldn't verify certificate");
+
+            X509 *server_cert =  SSL_get_peer_certificate(ssl);
+            if (!server_cert) throw_ssl_exception("couldn't find server cert");
+
+            if (!openssl::validate_hostname(orig_uri.get_host().c_str(), server_cert)) throw_ssl_exception("couldn't verify hostname");
         }
 
         SSL_set_mode(ssl, SSL_get_mode(ssl) & (~SSL_MODE_AUTO_RETRY));
