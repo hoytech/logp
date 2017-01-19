@@ -23,12 +23,12 @@ bool load_config_file(std::string file, config &c) {
         std::string k = it->first.as<std::string>();
         std::string v = it->second.as<std::string>();
 
-        if (k == "url") {
-            c.url = v;
-        } else if (k == "token") {
-            c.token = v;
+        if (k == "endpoint") {
+            c.endpoint = v;
+        } else if (k == "apikey") {
+            c.apikey = v;
         } else {
-            throw(std::runtime_error(std::string("Unrecognized config option (" + k + ") in file " + file)));
+            std::cerr << "logp: warning: Unrecognized config option (" + k + ") in file " + file << std::endl;
         }
     }
 

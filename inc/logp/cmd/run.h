@@ -85,7 +85,7 @@ class run {
         sigwatcher.run();
 
 
-        std::string endpoint = ::conf.url;
+        std::string endpoint = ::conf.endpoint;
 
         logp::websocket::worker ws_worker(endpoint);
         ws_worker.run();

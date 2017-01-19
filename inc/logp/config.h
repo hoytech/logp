@@ -7,8 +7,9 @@ namespace logp {
 
 
 struct config {
-    std::string url;
-    std::string token;
+    std::string endpoint = "wss://ws.logperiodic.com";
+    std::string apikey;
+    bool tls_no_verify = false;
 };
 
 

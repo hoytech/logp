@@ -29,15 +29,11 @@ int main(int argc, char **argv) {
     int arg, option_index;
 
     std::string opt_config;
-    std::string opt_url;
-    std::string opt_token;
 
     struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"version", no_argument, 0, 'V'},
         {"config", required_argument, 0, 'c'},
-        {"url", required_argument, 0, 0},
-        {"token", required_argument, 0, 0},
         {0, 0, 0, 0}
     };
 
@@ -47,14 +43,6 @@ int main(int argc, char **argv) {
           case '?':
           case 'h':
             usage();
-
-          case 0:
-            if (strcmp(long_options[option_index].name, "url") == 0) {
-                opt_url = std::string(optarg);
-            } else if (strcmp(long_options[option_index].name, "token") == 0) {
-                opt_token = std::string(optarg);
-            }
-            break;
 
           case 'c':
             opt_config = std::string(optarg);
@@ -93,21 +81,15 @@ int main(int argc, char **argv) {
     if (!config_loaded) config_loaded = logp::load_config_file("/etc/logp.conf", conf);
 
 
-    // Override config values with command line args
-
-    if (opt_url.size()) conf.url = opt_url;
-    if (opt_token.size()) conf.token = opt_token;
-
-
     // Verify necessary settings
 
-    if (!conf.url.size()) {
-        std::cerr << "No 'url' option specified" << std::endl;
+    if (!conf.endpoint.size()) {
+        std::cerr << "No 'endpoint' option specified" << std::endl;
         usage();
     }
 
-    if (!conf.token.size()) {
-        std::cerr << "No 'token' option specified" << std::endl;
+    if (!conf.apikey.size()) {
+        std::cerr << "No 'apikey' option specified" << std::endl;
         usage();
     }
 
