@@ -37,7 +37,7 @@ void worker::send_message_move(std::string &op, std::string &msg, std::function<
                             std::forward_as_tuple(request_id),
                             std::forward_as_tuple(request_id, cb));
 
-    nlohmann::json j = {{ "id", request_id }, { "op", op }};
+    nlohmann::json j = {{ "id", request_id }, { "op", op }, { "tk", "asdf" }};
     std::string full_msg = j.dump();
     full_msg += "\n";
     full_msg += msg;
@@ -67,14 +67,14 @@ void worker::run_event_loop() {
     while(1) {
         struct pollfd pollfds[2];
 
-        bool want_write = c.attempt_write();
+        c.attempt_write();
 
 
         pollfds[0].fd = input_queue_activity_pipe[0];
         pollfds[0].events = POLLIN;
 
         pollfds[1].fd = c.connection_fd;
-        pollfds[1].events = POLLIN | (want_write ? POLLOUT : 0);
+        pollfds[1].events = (c.want_read() ? POLLIN : 0) | (c.want_write() ? POLLOUT : 0);
 
 
         int rc = poll(pollfds, 2, -1);
@@ -123,12 +123,45 @@ void worker::trigger_input_queue() {
 
 
 
+void init_openssl_library() {
+    static bool initialized = false;
+
+    if (initialized) return;
+    initialized = true;
+
+    SSL_load_error_strings();
+    ERR_load_crypto_strings();
+
+    OpenSSL_add_all_algorithms();
+    SSL_library_init();
+}
 
 
 void connection::setup() {
-    websocketpp::uri &uri = parent_worker->uri;
+    websocketpp::uri &orig_uri = parent_worker->uri;
+    use_tls = (orig_uri.get_scheme() == "wss");
+    websocketpp::uri uri(false, orig_uri.get_host(), orig_uri.get_port(), orig_uri.get_resource());
 
     open_socket(uri);
+
+    if (use_tls) {
+        init_openssl_library();
+        ctx = SSL_CTX_new(TLSv1_method());
+        ssl = SSL_new(ctx);
+        SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+        bio = BIO_new_socket(connection_fd, BIO_NOCLOSE);
+        SSL_set_bio(ssl, bio, bio);
+
+        int ret = SSL_connect(ssl);
+        if (ret <= 0) {
+             throw std::runtime_error(std::string("SSL handshake failure"));
+        }
+
+        SSL_set_mode(ssl, SSL_get_mode(ssl) & (~SSL_MODE_AUTO_RETRY));
+    }
+
+    logp::util::make_fd_nonblocking(connection_fd);
+
 
     wspp_client.set_access_channels(websocketpp::log::alevel::none);
 
@@ -140,7 +173,6 @@ void connection::setup() {
     });
 
     wspp_client.set_message_handler([this](websocketpp::connection_hdl, websocketpp::client<websocketpp::config::core>::message_ptr msg) {
-        //std::cerr << "BING: " << msg->get_payload() << std::endl;
         std::stringstream ss(msg->get_payload());
 
         uint64_t request_id;
@@ -182,6 +214,11 @@ void connection::setup() {
 
 
 connection::~connection() {
+    if (ssl) SSL_free(ssl);
+    ssl = nullptr;
+    if (ctx) SSL_CTX_free(ctx);
+    ctx = nullptr;
+
     if (connection_fd != -1) close(connection_fd);
     connection_fd = -1;
 }
@@ -238,8 +275,6 @@ void connection::open_socket(websocketpp::uri &uri) {
         goto bail;
     }
 
-    logp::util::make_fd_nonblocking(fd);
-
     freeaddrinfo(res);
     connection_fd = fd;
     return;
@@ -249,13 +284,23 @@ void connection::open_socket(websocketpp::uri &uri) {
     if (res) freeaddrinfo(res);
     if (fd != -1) close(fd);
 
-    throw err;
     throw std::runtime_error(err);
 }
 
 
 
-bool connection::attempt_write() {
+bool connection::want_write() {
+    if (tls_want_read) return false;
+    return !!output_buffer.size();
+}
+
+bool connection::want_read() {
+    if (tls_want_write) return false;
+    return true;
+}
+
+
+void connection::attempt_write() {
     std::string new_contents = output_buffer_stream.str();
 
     if (new_contents.size()) {
@@ -263,36 +308,90 @@ bool connection::attempt_write() {
         output_buffer += new_contents;
     }
 
-    if (output_buffer.size()) {
+    if (!output_buffer.size()) return;
+
+    size_t bytes_written = 0;
+
+    if (use_tls) {
+        tls_want_read = tls_want_write = false;
+
+        int ret = (ssize_t) SSL_write(ssl, output_buffer.data(), output_buffer.size());
+
+        if (ret < 0) {
+            int err = SSL_get_error(ssl, ret);
+
+            if (err == SSL_ERROR_WANT_READ) {
+                tls_want_read = true;
+                return;
+            } else if (err == SSL_ERROR_WANT_WRITE) {
+                tls_want_write = true;
+                return;
+            } else {
+                throw std::runtime_error(std::string("tls error"));
+            }
+        } else if (ret == 0) {
+            throw std::runtime_error(std::string("socket closed"));
+        }
+
+        bytes_written = ret;
+    } else {
         ssize_t ret = ::write(connection_fd, output_buffer.data(), output_buffer.size());
 
         if (ret == -1) {
-            if (errno == EAGAIN || errno == EINTR) return true;
+            if (errno == EAGAIN || errno == EINTR) return;
             throw std::runtime_error(std::string("error writing to socket: ") + strerror(errno));
         } else if (ret == 0) {
             throw std::runtime_error(std::string("socket closed"));
         }
 
-        output_buffer.erase(0, ret);
+        bytes_written = ret;
     }
 
-    return !!output_buffer.size();
+    output_buffer.erase(0, bytes_written);
 }
 
 
 void connection::attempt_read() {
     char buf[4096];
 
-    ssize_t ret = ::read(connection_fd, buf, sizeof(buf));
+    size_t bytes_read = 0;
 
-    if (ret == -1) {
-        if (errno == EAGAIN || errno == EINTR) return;
-        throw std::runtime_error(std::string("error reading from socket: ") + strerror(errno));
-    } else if (ret == 0) {
-        throw std::runtime_error(std::string("socket closed"));
+    if (use_tls) {
+        tls_want_read = tls_want_write = false;
+
+        int ret = SSL_read(ssl, buf, sizeof(buf));
+
+        if (ret < 0) {
+            int err = SSL_get_error(ssl, ret);
+
+            if (err == SSL_ERROR_WANT_READ) {
+                tls_want_read = true;
+                return;
+            } else if (err == SSL_ERROR_WANT_WRITE) {
+                tls_want_write = true;
+                return;
+            } else {
+                throw std::runtime_error(std::string("tls error"));
+            }
+        } else if (ret == 0) {
+            throw std::runtime_error(std::string("socket closed"));
+        }
+
+        bytes_read = ret;
+    } else {
+        ssize_t ret = ::read(connection_fd, buf, sizeof(buf));
+
+        if (ret == -1) {
+            if (errno == EAGAIN || errno == EINTR) return;
+            throw std::runtime_error(std::string("error reading from socket: ") + strerror(errno));
+        } else if (ret == 0) {
+            throw std::runtime_error(std::string("socket closed"));
+        }
+
+        bytes_read = ret;
     }
 
-    wspp_conn->read_some(buf, ret);
+    wspp_conn->read_some(buf, bytes_read);
 }
 
 

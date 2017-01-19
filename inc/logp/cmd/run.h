@@ -85,8 +85,9 @@ class run {
         sigwatcher.run();
 
 
+        std::string endpoint = ::conf.url;
 
-        logp::websocket::worker ws_worker(::conf.url);
+        logp::websocket::worker ws_worker(endpoint);
         ws_worker.run();
 
 
@@ -144,6 +145,7 @@ class run {
                             have_event_id = true;
                         } else {
                             std::cerr << "status was not OK on end response" << std::endl;
+                            std::cerr << j.dump() << std::endl;
                         }
                     } catch (std::exception &e) {
                         std::cerr << "Unable to parse JSON body to extract event id" << std::endl;
@@ -156,6 +158,7 @@ class run {
                             exit(WEXITSTATUS(wait_status));
                         } else {
                             std::cerr << "status was not OK on end response" << std::endl;
+                            std::cerr << j.dump() << std::endl;
                         }
                     } catch (std::exception &e) {
                         std::cerr << "Unable to parse JSON body to confirm end" << std::endl;

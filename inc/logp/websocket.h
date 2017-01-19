@@ -7,6 +7,10 @@
 #include <functional>
 #include <unordered_map>
 
+#include <openssl/ssl.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+
 #include "websocketpp/config/core.hpp"
 #include "websocketpp/client.hpp"
 #include "websocketpp/uri.hpp"
@@ -70,8 +74,10 @@ class connection {
 
     void send_message_move(std::string &msg);
 
-    bool attempt_write(); // returns true if there is more to be written
+    void attempt_write();
     void attempt_read();
+    bool want_write();
+    bool want_read();
 
     websocketpp::client<websocketpp::config::core> wspp_client;
     websocketpp::client<websocketpp::config::core>::connection_ptr wspp_conn;
@@ -89,6 +95,14 @@ class connection {
 
     std::stringstream output_buffer_stream;
     std::string output_buffer;
+
+    // OpenSSL stuff
+    bool use_tls = false;
+    bool tls_want_read = false;
+    bool tls_want_write = false;
+    SSL_CTX *ctx = nullptr;
+    SSL *ssl = nullptr;
+    BIO *bio = nullptr;
 };
 
 

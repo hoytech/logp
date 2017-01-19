@@ -31,7 +31,7 @@ realclean: clean
 	rm -rf lib/yaml-cpp/build/
 
 logp: $(PROGOBJS) Makefile $(BUNDLED_LIBS)
-	$(CXX) $(CXXFLAGS) -L. $(LDFLAGS) $(PROGOBJS) -lpthread -o $@ $(BUNDLED_LIBS)
+	$(CXX) $(CXXFLAGS) -L. $(LDFLAGS) $(PROGOBJS) -lssl -lcrypto -lpthread -o $@ $(BUNDLED_LIBS)
 
 main.o: inc/logp/cmd/*.h
 
