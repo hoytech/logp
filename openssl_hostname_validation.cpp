@@ -11,6 +11,8 @@
  */
 
 /*
+Downloaded from: https://github.com/iSECPartners/ssl-conservatory/
+
 Slightly modified for Log Periodic, 2017
 
 LICENSE:
@@ -185,7 +187,7 @@ static HostnameValidationResult _validate_hostname(const char *hostname, const X
 
 
 
-int validate_hostname(const char *hostname, const X509 *server_cert) {
+bool validate_hostname(const char *hostname, const X509 *server_cert) {
 	return _validate_hostname(hostname, server_cert) == MatchFound;
 }
 

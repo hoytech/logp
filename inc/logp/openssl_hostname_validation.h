@@ -5,6 +5,6 @@
 
 namespace openssl {
 
-int validate_hostname(const char *hostname, const X509 *server_cert);
+bool validate_hostname(const char *hostname, const X509 *server_cert);
 
 };
