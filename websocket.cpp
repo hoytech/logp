@@ -183,10 +183,16 @@ void connection::setup() {
         if (!parent_worker->tls_no_verify) {
             if (SSL_get_verify_result(ssl) != X509_V_OK) throw_ssl_exception("couldn't verify certificate");
 
+            std::string host = uri.get_host();
+
             X509 *server_cert =  SSL_get_peer_certificate(ssl);
             if (!server_cert) throw_ssl_exception("couldn't find server cert");
 
-            if (!openssl::validate_hostname(orig_uri.get_host().c_str(), server_cert)) throw_ssl_exception("couldn't verify hostname");
+            int check_ret = X509_check_host(server_cert, host.c_str(), host.size(), X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS, nullptr);
+
+            X509_free(server_cert);
+
+            if (check_ret != 1) throw_ssl_exception("couldn't verify hostname");
         }
 
         SSL_set_mode(ssl, SSL_get_mode(ssl) & (~SSL_MODE_AUTO_RETRY));
