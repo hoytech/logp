@@ -5,6 +5,7 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <pwd.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 
@@ -118,7 +119,24 @@ class run {
 
 
         {
-            nlohmann::json j = {{ "st", start_timestamp }, { "da", {{ "stuff", 1 }} }};
+            nlohmann::json data;
+
+            {
+                for (char **a = argv; *a; a++) data["cmd"].push_back(*a);
+
+                char hostname[256];
+                if (!gethostname(hostname, sizeof(hostname))) {
+                    data["hostname"] = hostname;
+                } else {
+                    std::cerr << "Couldn't determine hostname: " << strerror(errno) << std::endl;
+                }
+
+                struct passwd *pw = getpwuid(geteuid());
+
+                if (pw) data["user"] = pw->pw_name;
+            }
+
+            nlohmann::json j = {{ "st", start_timestamp }, { "da", data }};
             std::string op("add");
             std::string msg_str = j.dump();
             ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
@@ -179,7 +197,16 @@ class run {
 
             if (pid_exited && have_event_id && !sent_end_message) {
                 {
-                    nlohmann::json j = {{ "ev", event_id }, { "en", end_timestamp }};
+                    nlohmann::json data;
+
+                    if (WIFEXITED(wait_status)) {
+                        data["exit"] = WEXITSTATUS(wait_status);
+                    } else if (WIFSIGNALED(wait_status)) {
+                        data["signal"] = WTERMSIG(wait_status);
+                        if (WCOREDUMP(wait_status)) data["core"] = true;
+                    }
+
+                    nlohmann::json j = {{ "ev", event_id }, { "en", end_timestamp }, { "da", data }};
                     std::string op("add");
                     std::string msg_str = j.dump();
                     ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
