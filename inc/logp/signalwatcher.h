@@ -13,6 +13,8 @@ class signal_watcher {
   public:
     signal_watcher();
     void subscribe(int signum, std::function<void()> cb);
+    void ignore(int signum);
+    void unblock();
     void run();
 
   private:

@@ -83,6 +83,11 @@ class run {
             }
         });
 
+        sigwatcher.ignore(SIGHUP);
+        sigwatcher.ignore(SIGINT);
+        sigwatcher.ignore(SIGQUIT);
+        sigwatcher.ignore(SIGTERM);
+
         sigwatcher.run();
 
 
@@ -112,6 +117,7 @@ class run {
         if (fork_ret == -1) {
             throw std::runtime_error(std::string("unable to fork: ") + strerror(errno));
         } else if (fork_ret == 0) {
+            sigwatcher.unblock();
             execvp(argv[0], argv);
             std::cerr << "Couldn't exec " << argv[0] << " : " << strerror(errno) << std::endl;
             _exit(1);
@@ -202,7 +208,7 @@ class run {
                     if (WIFEXITED(wait_status)) {
                         data["exit"] = WEXITSTATUS(wait_status);
                     } else if (WIFSIGNALED(wait_status)) {
-                        data["signal"] = WTERMSIG(wait_status);
+                        data["signal"] = strsignal(WTERMSIG(wait_status));
                         if (WCOREDUMP(wait_status)) data["core"] = true;
                     }
 

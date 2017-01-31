@@ -20,6 +20,14 @@ void signal_watcher::subscribe(int signum, std::function<void()> cb) {
     sigaddset(&set, signum);
 }
 
+void signal_watcher::ignore(int signum) {
+    subscribe(signum, [](){});
+}
+
+void signal_watcher::unblock() {
+    pthread_sigmask(SIG_UNBLOCK, &set, NULL);
+}
+
 
 void signal_watcher::run() {
     int s = pthread_sigmask(SIG_BLOCK, &set, NULL);
