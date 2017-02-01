@@ -140,6 +140,8 @@ class run {
                 struct passwd *pw = getpwuid(geteuid());
 
                 if (pw) data["user"] = pw->pw_name;
+
+                data["pid"] = fork_ret;
             }
 
             nlohmann::json j = {{ "st", start_timestamp }, { "da", data }};
