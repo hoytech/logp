@@ -128,6 +128,8 @@ class run {
             nlohmann::json data;
 
             {
+                data["type"] = "cmd";
+
                 for (char **a = argv; *a; a++) data["cmd"].push_back(*a);
 
                 char hostname[256];
@@ -208,10 +210,14 @@ class run {
                     nlohmann::json data;
 
                     if (WIFEXITED(wait_status)) {
+                        data["term"] = "exit";
                         data["exit"] = WEXITSTATUS(wait_status);
                     } else if (WIFSIGNALED(wait_status)) {
+                        data["term"] = "signal";
                         data["signal"] = strsignal(WTERMSIG(wait_status));
                         if (WCOREDUMP(wait_status)) data["core"] = true;
+                    } else {
+                        data["term"] = "unknown";
                     }
 
                     nlohmann::json j = {{ "ev", event_id }, { "en", end_timestamp }, { "da", data }};
