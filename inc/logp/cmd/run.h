@@ -43,7 +43,7 @@ class run {
         };
 
         optind = 1;
-        while ((arg = getopt_long_only(argc, argv, "+c:", long_options, &option_index)) != -1) {
+        while ((arg = getopt_long_only(argc, argv, "+", long_options, &option_index)) != -1) {
             switch (arg) {
               case '?':
               case 'h':
@@ -118,8 +118,8 @@ class run {
             throw std::runtime_error(std::string("unable to fork: ") + strerror(errno));
         } else if (fork_ret == 0) {
             sigwatcher.unblock();
-            execvp(argv[0], argv);
-            std::cerr << "Couldn't exec " << argv[0] << " : " << strerror(errno) << std::endl;
+            execvp(argv[optind], argv+optind);
+            std::cerr << "Couldn't exec " << argv[optind] << " : " << strerror(errno) << std::endl;
             _exit(1);
         }
 
@@ -130,7 +130,7 @@ class run {
             {
                 data["type"] = "cmd";
 
-                for (char **a = argv; *a; a++) data["cmd"].push_back(*a);
+                for (char **a = argv+optind; *a; a++) data["cmd"].push_back(*a);
 
                 char hostname[256];
                 if (!gethostname(hostname, sizeof(hostname))) {
