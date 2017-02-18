@@ -9,6 +9,7 @@
 #include "logp/websocket.h"
 #include "logp/config.h"
 #include "logp/util.h"
+#include "logp/print.h"
 
 #include "logp/cmd/run.h"
 
@@ -62,7 +63,7 @@ int main(int argc, char **argv) {
         config_loaded = logp::load_config_file(opt_config, conf);
 
         if (!config_loaded) {
-            std::cerr << "Provided config file '" << opt_config << "' doesn't exist" << std::endl;
+            PRINT_ERROR << "Provided config file '" << opt_config << "' doesn't exist";
             exit(1);
         }
     }
@@ -84,22 +85,22 @@ int main(int argc, char **argv) {
     // Verify necessary settings
 
     if (!conf.endpoint.size()) {
-        std::cerr << "No 'endpoint' option specified" << std::endl;
+        PRINT_ERROR << "No 'endpoint' option specified";
         usage();
     }
 
     if (!conf.apikey.size()) {
-        std::cerr << "No 'apikey' option specified" << std::endl;
+        PRINT_ERROR << "No 'apikey' option specified";
         usage();
     }
 
     if (conf.apikey.size() < 3 || conf.apikey.find('-') == std::string::npos) {
-        std::cerr << "apikey has incorrect format" << std::endl;
+        PRINT_ERROR << "apikey has incorrect format";
         usage();
     }
 
     if (optind >= argc) {
-        std::cerr << "Expected a command, ie 'logp run ...'" << std::endl;
+        PRINT_ERROR << "Expected a command, ie 'logp run ...'";
         usage();
     }
 
@@ -111,7 +112,7 @@ int main(int argc, char **argv) {
     if (command == "run") {
         logp::cmd::run(argc-optind, argv+optind);
     } else {
-        std::cerr << "Unknown command: " << command << std::endl;
+        PRINT_ERROR << "Unknown command: " << command;
         usage();
     }
 

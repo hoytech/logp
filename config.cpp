@@ -5,6 +5,7 @@
 #include "yaml-cpp/yaml.h"
 
 #include "logp/config.h"
+#include "logp/print.h"
 
 
 namespace logp {
@@ -30,7 +31,7 @@ bool load_config_file(std::string file, config &c) {
         } else if (k == "tls_no_verify") {
             c.tls_no_verify = v.as<bool>();
         } else {
-            std::cerr << "logp: warning: Unrecognized config option (" + k + ") in file " + file << std::endl;
+            PRINT_INFO << "warning: Unrecognized config option (" + k + ") in file " + file;
         }
     }
 

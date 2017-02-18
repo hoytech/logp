@@ -14,6 +14,7 @@
 #include "logp/util.h"
 #include "logp/websocket.h"
 #include "logp/config.h"
+#include "logp/print.h"
 
 
 
@@ -68,7 +69,7 @@ void worker::run() {
             try {
                 run_event_loop();
             } catch (std::exception &e) {
-                std::cerr << "Websocket error: " << e.what() << " (sleeping and trying again)" << std::endl;
+                PRINT_ERROR << "Websocket error: " << e.what() << " (sleeping and trying again)";
                 sleep(5);
             }
         }
@@ -94,7 +95,7 @@ void worker::run_event_loop() {
 
         int rc = poll(pollfds, 2, -1);
         if (rc == -1) {
-            std::cerr << "logp: WARNING: couldn't poll" << std::endl;
+            PRINT_ERROR << "warning: couldn't poll: " << strerror(errno);
             continue;
         }
 
@@ -243,14 +244,14 @@ void connection::setup() {
 
             std::getline(ss, body_str);
         } catch (std::exception &e) {
-            std::cerr << "logp: unable to header, ignoring: " << e.what() << std::endl;
+            PRINT_ERROR << "logp: unable to parse header, ignoring: " << e.what();
             return;
         }
 
         auto res = parent_worker->active_requests.find(request_id);
 
         if (res == parent_worker->active_requests.end()) {
-            std::cerr << "logp: response came for unknown request id, ignoring" << std::endl;
+            PRINT_ERROR << "logp: response came for unknown request id, ignoring";
             return;
         }
 

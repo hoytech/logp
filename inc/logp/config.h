@@ -10,6 +10,7 @@ struct config {
     std::string endpoint = "wss://ws.logperiodic.com";
     std::string apikey;
     bool tls_no_verify = false;
+    int verbosity = 0;
 };
 
 

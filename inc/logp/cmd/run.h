@@ -22,6 +22,24 @@
 namespace logp { namespace cmd {
 
 
+enum class run_msg_type { PROCESS_EXITED, WEBSOCKET_RESPONSE };
+
+class run_msg {
+  public:
+    run_msg(run_msg_type type_) : type(type_) {}
+
+    run_msg_type type;
+
+    // PROCESS_EXITED
+    int pid = 0;
+    int wait_status = 0;
+    uint64_t timestamp = 0;
+
+    // WEBSOCKET_RESPONSE
+    std::string response;
+};
+
+
 class run {
   public:
     void usage() {
@@ -61,7 +79,7 @@ class run {
 
 
 
-        hoytech::protected_queue<logp::msg::cmd_run> cmd_run_queue;
+        hoytech::protected_queue<run_msg> cmd_run_queue;
 
 
 
@@ -75,7 +93,7 @@ class run {
             int status;
             pid_t pid = waitpid(-1, &status, WNOHANG);
             if (pid > 0) {
-                logp::msg::cmd_run m(logp::msg::cmd_run_msg_type::PROCESS_EXITED);
+                run_msg m(run_msg_type::PROCESS_EXITED);
                 m.pid = pid;
                 m.wait_status = status;
                 m.timestamp = (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
@@ -105,7 +123,7 @@ class run {
         } else if (fork_ret == 0) {
             sigwatcher.unblock();
             execvp(argv[optind], argv+optind);
-            std::cerr << "Couldn't exec " << argv[optind] << " : " << strerror(errno) << std::endl;
+            PRINT_ERROR << "Couldn't exec " << argv[optind] << " : " << strerror(errno);
             _exit(1);
         }
 
@@ -122,7 +140,7 @@ class run {
                 if (!gethostname(hostname, sizeof(hostname))) {
                     data["hostname"] = hostname;
                 } else {
-                    std::cerr << "Couldn't determine hostname: " << strerror(errno) << std::endl;
+                    PRINT_ERROR << "Couldn't determine hostname: " << strerror(errno);
                 }
 
                 struct passwd *pw = getpwuid(geteuid());
@@ -136,7 +154,7 @@ class run {
             std::string op("add");
             std::string msg_str = j.dump();
             ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
-                logp::msg::cmd_run m(logp::msg::cmd_run_msg_type::WEBSOCKET_RESPONSE);
+                run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
                 m.response = resp;
                 cmd_run_queue.push_move(m);
             });
@@ -152,15 +170,15 @@ class run {
         int wait_status = 0;
 
         while (1) {
-            logp::msg::cmd_run m = cmd_run_queue.pop();
+            run_msg m = cmd_run_queue.pop();
 
-            if (m.type == logp::msg::cmd_run_msg_type::PROCESS_EXITED) {
+            if (m.type == run_msg_type::PROCESS_EXITED) {
                 if (m.pid == fork_ret) {
                     end_timestamp = m.timestamp;
                     wait_status = m.wait_status;
                     pid_exited = true;
                 }
-            } else if (m.type == logp::msg::cmd_run_msg_type::WEBSOCKET_RESPONSE) {
+            } else if (m.type == run_msg_type::WEBSOCKET_RESPONSE) {
                 if (!sent_end_message) {
                     try {
                         auto j = nlohmann::json::parse(m.response);
@@ -169,11 +187,10 @@ class run {
                             event_id = j["ev"];
                             have_event_id = true;
                         } else {
-                            std::cerr << "status was not OK on start response" << std::endl;
-                            std::cerr << j.dump() << std::endl;
+                            PRINT_ERROR << "status was not OK on start response: " << j.dump();
                         }
                     } catch (std::exception &e) {
-                        std::cerr << "Unable to parse JSON body to extract event id" << std::endl;
+                        PRINT_ERROR << "Unable to parse JSON body to extract event id";
                     }
                 } else {
                     try {
@@ -182,11 +199,10 @@ class run {
                         if (j["status"] == "ok") {
                             exit(WEXITSTATUS(wait_status));
                         } else {
-                            std::cerr << "status was not OK on end response" << std::endl;
-                            std::cerr << j.dump() << std::endl;
+                            PRINT_ERROR << "status was not OK on end response: " << j.dump();
                         }
                     } catch (std::exception &e) {
-                        std::cerr << "Unable to parse JSON body to confirm end" << std::endl;
+                        PRINT_ERROR << "Unable to parse JSON body to confirm end";
                     }
                 }
             }
@@ -210,7 +226,7 @@ class run {
                     std::string op("add");
                     std::string msg_str = j.dump();
                     ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
-                        logp::msg::cmd_run m(logp::msg::cmd_run_msg_type::WEBSOCKET_RESPONSE);
+                        run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
                         m.response = resp;
                         cmd_run_queue.push_move(m);
                     });
