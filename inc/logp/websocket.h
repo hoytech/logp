@@ -37,25 +37,25 @@ class request {
 
 class worker {
   public:
-    worker(std::string &uri_raw, std::string &token_) : uri(uri_raw), token(token_) {
+    worker() {
         setup();
+        run();
     }
 
-    void run();
     void send_message_move(std::string &op, std::string &msg, std::function<void(std::string &)> cb);
 
-    websocketpp::uri uri;
-    std::string token;
-
     // Accessed by connection
+    std::string uri;
     bool tls_no_verify = false;
     std::unordered_map<uint64_t, request> active_requests;
 
   private:
     void setup();
+    void run();
     void run_event_loop();
     void trigger_input_queue();
 
+    std::string token;
     std::thread t;
     uint64_t next_request_id = 1;
     int input_queue_activity_pipe[2];

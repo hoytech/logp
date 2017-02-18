@@ -13,6 +13,7 @@
 
 #include "logp/util.h"
 #include "logp/websocket.h"
+#include "logp/config.h"
 
 
 
@@ -22,6 +23,20 @@ namespace logp { namespace websocket {
 
 
 void worker::setup() {
+    size_t dash_pos = ::conf.apikey.find('-');
+    if (dash_pos == std::string::npos) throw std::runtime_error(std::string("unable to find - in apikey"));
+
+    std::string env_id = ::conf.apikey.substr(0, dash_pos + 1);
+    token = ::conf.apikey.substr(dash_pos + 1);
+
+    std::string endpoint = ::conf.endpoint;
+    if (endpoint.back() != '/') endpoint += "/";
+    endpoint += env_id;
+
+    uri = endpoint;
+
+    if (::conf.tls_no_verify) tls_no_verify = true;
+
     int rc = pipe(input_queue_activity_pipe);
     if (rc) throw std::runtime_error(std::string("unable to create pipe: ") + strerror(errno));
 
@@ -141,7 +156,7 @@ static void throw_ssl_exception(std::string msg) {
 
 
 void connection::setup() {
-    websocketpp::uri &orig_uri = parent_worker->uri;
+    websocketpp::uri orig_uri(parent_worker->uri);
     use_tls = (orig_uri.get_scheme() == "wss");
     websocketpp::uri uri(false, orig_uri.get_host(), orig_uri.get_port(), orig_uri.get_resource());
 

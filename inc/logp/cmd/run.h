@@ -91,21 +91,7 @@ class run {
         sigwatcher.run();
 
 
-        size_t dash_pos = ::conf.apikey.find('-');
-        if (dash_pos == std::string::npos) throw std::runtime_error(std::string("unable to find - in apikey"));
-
-        std::string env_id = ::conf.apikey.substr(0, dash_pos + 1);
-        std::string token = ::conf.apikey.substr(dash_pos + 1);
-
-        std::string endpoint = ::conf.endpoint;
-        if (endpoint.back() != '/') endpoint += "/";
-        endpoint += env_id;
-
-        logp::websocket::worker ws_worker(endpoint, token);
-
-        if (::conf.tls_no_verify) ws_worker.tls_no_verify = true;
-
-        ws_worker.run();
+        logp::websocket::worker ws_worker;
 
 
         struct timeval start_tv;
@@ -183,7 +169,7 @@ class run {
                             event_id = j["ev"];
                             have_event_id = true;
                         } else {
-                            std::cerr << "status was not OK on end response" << std::endl;
+                            std::cerr << "status was not OK on start response" << std::endl;
                             std::cerr << j.dump() << std::endl;
                         }
                     } catch (std::exception &e) {
