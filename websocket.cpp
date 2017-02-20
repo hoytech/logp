@@ -69,7 +69,7 @@ void worker::run() {
             try {
                 run_event_loop();
             } catch (std::exception &e) {
-                PRINT_ERROR << "Websocket error: " << e.what() << " (sleeping and trying again)";
+                PRINT_WARNING << "websocket: " << e.what() << " (sleeping and trying again)";
                 sleep(5);
             }
         }
@@ -95,7 +95,7 @@ void worker::run_event_loop() {
 
         int rc = poll(pollfds, 2, -1);
         if (rc == -1) {
-            PRINT_ERROR << "warning: couldn't poll: " << strerror(errno);
+            if (errno != EINTR) PRINT_WARNING << "warning: couldn't poll: " << strerror(errno);
             continue;
         }
 
@@ -244,14 +244,14 @@ void connection::setup() {
 
             std::getline(ss, body_str);
         } catch (std::exception &e) {
-            PRINT_ERROR << "logp: unable to parse header, ignoring: " << e.what();
+            PRINT_WARNING << "unable to parse websocket header, ignoring: " << e.what();
             return;
         }
 
         auto res = parent_worker->active_requests.find(request_id);
 
         if (res == parent_worker->active_requests.end()) {
-            PRINT_ERROR << "logp: response came for unknown request id, ignoring";
+            PRINT_WARNING << "response came for unknown request id, ignoring";
             return;
         }
 
