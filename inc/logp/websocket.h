@@ -17,10 +17,28 @@
 #include "websocketpp/uri.hpp"
 #include "protected_queue/protected_queue.h"
 
-#include "logp/messages.h"
-
 
 namespace logp { namespace websocket {
+
+
+
+class input_msg {
+  public:
+    input_msg(std::string data_) : data(data_) {}
+
+    // Input
+
+    std::string data;
+};
+
+class output_msg {
+  public:
+    output_msg(std::string data_) : data(data_) {}
+
+    // Input
+
+    std::string data;
+};
 
 
 
@@ -59,7 +77,7 @@ class worker {
     std::thread t;
     uint64_t next_request_id = 1;
     int input_queue_activity_pipe[2];
-    hoytech::protected_queue<logp::msg::websocket_input> input_queue;
+    hoytech::protected_queue<input_msg> input_queue;
 };
 
 

@@ -5,7 +5,6 @@
 #include <iostream>
 #include <string>
 
-#include "logp/messages.h"
 #include "logp/websocket.h"
 #include "logp/config.h"
 #include "logp/util.h"
