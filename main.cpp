@@ -11,7 +11,9 @@
 #include "logp/util.h"
 #include "logp/print.h"
 
+#include "logp/cmd/base.h"
 #include "logp/cmd/run.h"
+#include "logp/cmd/ps.h"
 
 
 logp::config conf;
@@ -19,7 +21,12 @@ logp::config conf;
 
 
 void usage() {
-    std::cerr << "Usage: logp ..." << std::endl;
+    std::cerr <<
+        "\nUsage: logp [global options] <command> [command options]\n\n"
+        "  Commands:\n"
+        "    run   Execute the given command, upload information\n"
+        "    ps    See what is currently running, history, follow new runs\n"
+        << std::endl;
     exit(1);
 }
 
@@ -100,7 +107,7 @@ int main(int argc, char **argv) {
     }
 
     if (optind >= argc) {
-        PRINT_ERROR << "Expected a command, ie 'logp run ...'";
+        PRINT_ERROR << "Expected a command, ie 'logp run sleep 10'";
         usage();
     }
 
@@ -109,13 +116,21 @@ int main(int argc, char **argv) {
 
     std::string command(argv[optind]);
 
+    logp::cmd::base *c = nullptr;
+
     if (command == "run") {
-        logp::cmd::run(argc-optind, argv+optind);
+        c = new logp::cmd::run();
+    } else if (command == "ps") {
+        c = new logp::cmd::ps();
+    }
+
+    if (c) {
+        c->parse_params(argc-optind, argv+optind);
+        c->execute();
     } else {
         PRINT_ERROR << "Unknown command: " << command;
         usage();
     }
-
 
     return 0;
 }

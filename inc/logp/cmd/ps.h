@@ -4,7 +4,7 @@
 
 namespace logp { namespace cmd {
 
-class run : public base {
+class ps : public base {
   public:
     const char *usage();
     struct option *get_long_options();
@@ -12,6 +12,7 @@ class run : public base {
     void execute();
 
   private:
+    bool follow = false;
 };
 
 }}

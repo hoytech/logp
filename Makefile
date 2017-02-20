@@ -6,7 +6,7 @@ CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
 LDFLAGS  =
 
 BUNDLED_LIBS = lib/yaml-cpp/build/libyaml-cpp.a
-PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o
+PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o cmd/base.o cmd/run.o cmd/ps.o
 
 
 ifeq ($(wildcard inc/protected_queue/protected_queue.h),)
@@ -25,7 +25,7 @@ endif
 all: logp
 
 clean:
-	rm -f *.o *.so logp
+	rm -f *.o cmd/*.o *.so logp
 
 realclean: clean
 	rm -rf lib/yaml-cpp/build/
@@ -36,7 +36,7 @@ logp: $(PROGOBJS) Makefile $(BUNDLED_LIBS)
 main.o: inc/logp/cmd/*.h
 
 %.o: %.cpp inc/logp/*.h Makefile
-	$(CXX) $(CXXFLAGS) -c $<
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 
 ## 3rd party deps
