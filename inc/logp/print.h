@@ -9,17 +9,17 @@ namespace logp {
 class printer {
   public:
     ~printer() {
-        fprintf(stderr, "logp: %s\n", os.str().c_str());
+        fprintf(stderr, "logp: %s\n", stringstream.str().c_str());
     }
     std::ostringstream &get() {
-        return os;
+        return stringstream;
     }
   private:
-    std::ostringstream os;
+    std::ostringstream stringstream;
 };
 
-#define PRINT_ERROR if (::conf.verbosity < -1) {} else logp::printer().get()
-#define PRINT_INFO if (::conf.verbosity < 0) {} else logp::printer().get()
-#define PRINT_DEBUG if (::conf.verbosity < 1) {} else logp::printer().get()
+#define PRINT_ERROR if (::conf.verbosity >= -1) logp::printer().get()
+#define PRINT_INFO if (::conf.verbosity >= 0) logp::printer().get()
+#define PRINT_DEBUG if (::conf.verbosity >= 1) logp::printer().get()
 
 }
