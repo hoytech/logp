@@ -33,7 +33,7 @@ struct option *ps::get_long_options() {
     return opts;
 }
 
-void ps::process_option(int arg) {
+void ps::process_option(int arg, int) {
     switch (arg) {
       case 'f':
         follow = true;

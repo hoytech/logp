@@ -13,16 +13,14 @@ namespace logp { namespace cmd {
 void base::parse_params(int argc, char **argv) {
     auto *long_options = get_long_options();
 
-    std::vector<struct option> new_long_options;
-
-    new_long_options.push_back({"help", no_argument, 0, 'h'});
+    my_long_options.push_back({"help", no_argument, 0, 'h'});
 
     while (long_options[0].name || long_options[0].val) {
-        new_long_options.push_back(long_options[0]);
+        my_long_options.push_back(long_options[0]);
         long_options++;
     }
 
-    new_long_options.push_back({ 0,0,0,0 });
+    my_long_options.push_back({ 0,0,0,0 });
 
 
     std::string optstr = "+h?";
@@ -32,9 +30,9 @@ void base::parse_params(int argc, char **argv) {
     int arg, option_index;
 
     optind = 1;
-    while ((arg = getopt_long(argc, argv, optstr.c_str(), new_long_options.data(), &option_index)) != -1) {
+    while ((arg = getopt_long(argc, argv, optstr.c_str(), my_long_options.data(), &option_index)) != -1) {
         if (arg == 'h' || arg == '?') print_usage_and_exit();
-        process_option(arg);
+        process_option(arg, option_index);
     }
 
     my_argv = argv;

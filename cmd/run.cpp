@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <string>
+#include <fstream>
 
 #include "nlohmann/json.hpp"
 
@@ -23,6 +24,7 @@ namespace logp { namespace cmd {
 const char *run::usage() {
     static const char *u =
         "logp run [options] <command>\n"
+        "  --parent-cmd    Collect the name of the parent process\n"
         "\n"
         "  <command>   This is a unix command, possibly including options\n"
     ;
@@ -34,13 +36,21 @@ const char *run::getopt_string() { return ""; }
 
 struct option *run::get_long_options() {
     static struct option opts[] = {
+        {"parent-cmd", no_argument, 0, 0},
         {0, 0, 0, 0}
     };
 
     return opts;
 }
 
-void run::process_option(int) {
+void run::process_option(int arg, int option_index) {
+    switch (arg) {
+      case 0:
+        if (strcmp(my_long_options[option_index].name, "parent-cmd") == 0) {
+            opt_parent_cmd = true;
+        }
+        break;
+    };
 }
 
 
@@ -105,6 +115,20 @@ void run::execute() {
     gettimeofday(&start_tv, nullptr);
     uint64_t start_timestamp = (uint64_t)start_tv.tv_sec * 1000000 + start_tv.tv_usec;
 
+    pid_t ppid = getppid();
+    std::string parent_cmd;
+
+    if (opt_parent_cmd) {
+#ifdef __linux__
+        try {
+            std::ifstream in(std::string("/proc/") + std::to_string(ppid) + std::string("/cmdline"));
+            std::getline(in, parent_cmd, '\0');
+        } catch (std::exception &e) {
+            PRINT_WARNING << "unable to get parent process name: " << e.what();
+        }
+#endif
+    }
+
     pid_t fork_ret = fork();
 
     if (fork_ret == -1) {
@@ -137,6 +161,8 @@ void run::execute() {
             if (pw) data["user"] = pw->pw_name;
 
             data["pid"] = fork_ret;
+            data["ppid"] = ppid;
+            if (parent_cmd.size()) data["parent_cmd"] = parent_cmd;
         }
 
         {
