@@ -30,7 +30,7 @@ const char *run::usage() {
     return u;
 }
 
-const char *run::getopt_string() { return "+"; }
+const char *run::getopt_string() { return ""; }
 
 struct option *run::get_long_options() {
     static struct option opts[] = {

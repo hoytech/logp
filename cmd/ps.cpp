@@ -22,7 +22,7 @@ const char *ps::usage() {
     return u;
 }
 
-const char *ps::getopt_string() { return "+f"; }
+const char *ps::getopt_string() { return "f"; }
 
 struct option *ps::get_long_options() {
     static struct option opts[] = {
