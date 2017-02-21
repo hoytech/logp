@@ -252,12 +252,33 @@ void connection::setup() {
 
 
     wspp_client.set_access_channels(websocketpp::log::alevel::none);
+    wspp_client.set_error_channels(websocketpp::log::elevel::none);
 
     wspp_client.register_ostream(&output_buffer_stream);
 
     wspp_client.set_open_handler([this](websocketpp::connection_hdl) {
         ws_connected = true;
         drain_pending_messages();
+    });
+
+    wspp_client.set_close_handler([this](websocketpp::connection_hdl hdl){
+        auto con = wspp_client.get_con_from_hdl(hdl);
+
+        std::string err = "websocket connection closed (";
+        err += con->get_ec().message();
+        err += ")";
+
+        throw std::runtime_error(err);
+    });
+
+    wspp_client.set_fail_handler([this](websocketpp::connection_hdl hdl){
+        auto con = wspp_client.get_con_from_hdl(hdl);
+
+        std::string err = "websocket handshake failure (";
+        err += con->get_ec().message();
+        err += ")";
+
+        throw std::runtime_error(err);
     });
 
     wspp_client.set_message_handler([this](websocketpp::connection_hdl, websocketpp::client<websocketpp::config::core>::message_ptr msg) {
@@ -330,7 +351,7 @@ void connection::setup() {
 
     wspp_client.connect(wspp_conn);
 
-    PRINT_INFO << "connected to end-point: " << uri_str;
+    PRINT_INFO << "connected to end-point: " << parent_worker->uri;
 }
 
 
