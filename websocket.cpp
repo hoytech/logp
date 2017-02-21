@@ -6,6 +6,7 @@
 #include <netdb.h>
 #include <poll.h>
 
+#include <string>
 #include <iostream>
 #include <stdexcept>
 
@@ -23,11 +24,21 @@ namespace logp { namespace websocket {
 
 
 
+std::string request::render_body() {
+    nlohmann::json j = body;
+
+    if (latest_entry) j["latest_entry"] = latest_entry;
+
+    return j.dump();
+}
+
+
+
 void worker::setup() {
     size_t dash_pos = ::conf.apikey.find('-');
     if (dash_pos == std::string::npos) throw std::runtime_error(std::string("unable to find - in apikey"));
 
-    std::string env_id = ::conf.apikey.substr(0, dash_pos + 1);
+    std::string env_id = ::conf.apikey.substr(0, dash_pos);
     token = ::conf.apikey.substr(dash_pos + 1);
 
     std::string endpoint = ::conf.endpoint;
@@ -38,28 +49,45 @@ void worker::setup() {
 
     if (::conf.tls_no_verify) tls_no_verify = true;
 
-    int rc = pipe(input_queue_activity_pipe);
+    int rc = pipe(activity_pipe);
     if (rc) throw std::runtime_error(std::string("unable to create pipe: ") + strerror(errno));
 
-    logp::util::make_fd_nonblocking(input_queue_activity_pipe[0]);
-    logp::util::make_fd_nonblocking(input_queue_activity_pipe[1]);
+    logp::util::make_fd_nonblocking(activity_pipe[0]);
+    logp::util::make_fd_nonblocking(activity_pipe[1]);
 }
 
 
-void worker::send_message_move(std::string &op, std::string &msg, std::function<void(std::string &)> cb) {
+
+
+void worker::push_move_new_request(request &r) {
+    new_requests_queue.push_move(r);
+    trigger_activity_pipe();
+}
+
+
+
+std::string worker::prepare_new_request(request &r) {
     uint64_t request_id = next_request_id++;
+
+    r.request_id = request_id;
+
+    std::string initial_message = render_request(r);
 
     active_requests.emplace(std::piecewise_construct,
                             std::forward_as_tuple(request_id),
-                            std::forward_as_tuple(request_id, cb));
+                            std::forward_as_tuple(std::move(r)));
 
-    nlohmann::json j = {{ "id", request_id }, { "op", op }, { "tk", token }};
+    return std::move(initial_message);
+}
+
+std::string worker::render_request(request &r) {
+    nlohmann::json j = {{ "id", r.request_id }, { "op", r.op }, { "tk", token }};
+
     std::string full_msg = j.dump();
     full_msg += "\n";
-    full_msg += msg;
+    full_msg += r.render_body();
 
-    input_queue.push_move(full_msg);
-    trigger_input_queue();
+    return std::move(full_msg);
 }
 
 
@@ -69,7 +97,7 @@ void worker::run() {
             try {
                 run_event_loop();
             } catch (std::exception &e) {
-                PRINT_WARNING << "websocket: " << e.what() << " (sleeping and trying again)";
+                PRINT_INFO << "websocket: " << e.what() << " (sleeping for 5 seconds)";
                 sleep(5);
             }
         }
@@ -80,13 +108,18 @@ void worker::run() {
 void worker::run_event_loop() {
     connection c(this);
 
+    for (auto it : active_requests) {
+        std::string msg = render_request(it.second);
+        c.send_message_move(msg);
+    }
+
     while(1) {
         struct pollfd pollfds[2];
 
         c.attempt_write();
 
 
-        pollfds[0].fd = input_queue_activity_pipe[0];
+        pollfds[0].fd = activity_pipe[0];
         pollfds[0].events = POLLIN;
 
         pollfds[1].fd = c.connection_fd;
@@ -103,15 +136,16 @@ void worker::run_event_loop() {
         if (pollfds[0].revents & POLLIN) {
             char junk[1];
 
-            ssize_t ret = read(input_queue_activity_pipe[0], junk, 1);
+            ssize_t ret = read(activity_pipe[0], junk, 1);
             if (ret != 1 && (errno != EAGAIN || errno != EINTR)) {
                 throw std::runtime_error(std::string("error reading from triggering pipe: ") + strerror(errno));
             }
 
-            auto temp_queue = input_queue.pop_all_no_wait();
+            auto temp_queue = new_requests_queue.pop_all_no_wait();
 
-            for (auto &inp : temp_queue) {
-                c.send_message_move(inp.data);
+            for (auto &req : temp_queue) {
+                std::string msg = prepare_new_request(req);
+                c.send_message_move(msg);
             }
         }
 
@@ -124,10 +158,10 @@ void worker::run_event_loop() {
 
 
 
-void worker::trigger_input_queue() {
+void worker::trigger_activity_pipe() {
     again:
 
-    ssize_t ret = ::write(input_queue_activity_pipe[1], "", 1);
+    ssize_t ret = ::write(activity_pipe[1], "", 1);
 
     if (ret != 1) {
         if (errno == EINTR) goto again;
@@ -248,14 +282,46 @@ void connection::setup() {
             return;
         }
 
-        auto res = parent_worker->active_requests.find(request_id);
+        auto find_res = parent_worker->active_requests.find(request_id);
 
-        if (res == parent_worker->active_requests.end()) {
+        if (find_res == parent_worker->active_requests.end()) {
             PRINT_WARNING << "response came for unknown request id, ignoring";
             return;
         }
 
-        res->second.cb(body_str);
+        auto &req = find_res->second;
+
+        try {
+            auto json = nlohmann::json::parse(body_str);
+
+            if (req.op == "add") {
+                if (req.on_data) req.on_data(json);
+            } else if (req.op == "get") {
+                for (auto elem : json) {
+                    if (elem.count("e")) {
+                        auto &e = elem["e"];
+
+                        req.latest_entry = std::max(req.latest_entry, static_cast<uint64_t>(e["id"]));
+
+                        if (req.on_data) req.on_data(e);
+                    } else if (elem.count("p")) {
+                        auto &p = elem["p"];
+
+                        if (p.count("latest_entry_id")) {
+                            req.latest_entry = std::max(req.latest_entry, static_cast<uint64_t>(p["latest_entry_id"]));
+                        }
+                        if (p.count("finished_history") && req.on_finished_history) req.on_finished_history();
+                    }
+                }
+            }
+        } catch (std::exception &e) {
+            PRINT_WARNING << "unable to parse websocket body, ignoring: " << e.what();
+            return;
+        }
+
+        if (fin) {
+            parent_worker->active_requests.erase(request_id);
+        }
     });
 
     websocketpp::lib::error_code ec;
@@ -263,6 +329,8 @@ void connection::setup() {
     wspp_conn = wspp_client.get_connection(uri_str, ec);
 
     wspp_client.connect(wspp_conn);
+
+    PRINT_INFO << "connected to end-point: " << uri_str;
 }
 
 

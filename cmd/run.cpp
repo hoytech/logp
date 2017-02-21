@@ -19,6 +19,7 @@
 
 namespace logp { namespace cmd {
 
+
 const char *run::usage() {
     static const char *u =
         "logp run [options] <command>\n"
@@ -28,6 +29,8 @@ const char *run::usage() {
 
     return u;
 }
+
+const char *run::getopt_string() { return "+"; }
 
 struct option *run::get_long_options() {
     static struct option opts[] = {
@@ -56,7 +59,7 @@ class run_msg {
     uint64_t timestamp = 0;
 
     // WEBSOCKET_RESPONSE
-    std::string response;
+    nlohmann::json response;
 };
 
 
@@ -136,14 +139,19 @@ void run::execute() {
             data["pid"] = fork_ret;
         }
 
-        nlohmann::json j = {{ "st", start_timestamp }, { "da", data }};
-        std::string op("add");
-        std::string msg_str = j.dump();
-        ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
-            run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
-            m.response = resp;
-            cmd_run_queue.push_move(m);
-        });
+        {
+            logp::websocket::request r;
+
+            r.op = "add";
+            r.body = {{ "st", start_timestamp }, { "da", data }};
+            r.on_data = [&](nlohmann::json &resp) {
+                run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
+                m.response = resp;
+                cmd_run_queue.push_move(m);
+            };
+
+            ws_worker.push_move_new_request(r);
+        }
     }
 
 
@@ -167,28 +175,24 @@ void run::execute() {
         } else if (m.type == run_msg_type::WEBSOCKET_RESPONSE) {
             if (!sent_end_message) {
                 try {
-                    auto j = nlohmann::json::parse(m.response);
-
-                    if (j["status"] == "ok") {
-                        event_id = j["ev"];
+                    if (m.response["status"] == "ok") {
+                        event_id = m.response["ev"];
                         have_event_id = true;
                     } else {
-                        PRINT_ERROR << "status was not OK on start response: " << j.dump();
+                        PRINT_ERROR << "status was not OK on start response: " << m.response.dump();
                     }
                 } catch (std::exception &e) {
-                    PRINT_ERROR << "Unable to parse JSON body to extract event id";
+                    PRINT_ERROR << "Unable to parse JSON body to extract event id: " << e.what();
                 }
             } else {
                 try {
-                    auto j = nlohmann::json::parse(m.response);
-
-                    if (j["status"] == "ok") {
+                    if (m.response["status"] == "ok") {
                         exit(WEXITSTATUS(wait_status));
                     } else {
-                        PRINT_ERROR << "status was not OK on end response: " << j.dump();
+                        PRINT_ERROR << "status was not OK on end response: " << m.response.dump();
                     }
                 } catch (std::exception &e) {
-                    PRINT_ERROR << "Unable to parse JSON body to confirm end";
+                    PRINT_ERROR << "Unable to parse JSON body to confirm end: " << e.what();
                 }
             }
         }
@@ -208,14 +212,19 @@ void run::execute() {
                     data["term"] = "unknown";
                 }
 
-                nlohmann::json j = {{ "ev", event_id }, { "en", end_timestamp }, { "da", data }};
-                std::string op("add");
-                std::string msg_str = j.dump();
-                ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
-                    run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
-                    m.response = resp;
-                    cmd_run_queue.push_move(m);
-                });
+                {
+                    logp::websocket::request r;
+
+                    r.op = "add";
+                    r.body = {{ "ev", event_id }, { "en", end_timestamp }, { "da", data }};
+                    r.on_data = [&](nlohmann::json &resp) {
+                        run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
+                        m.response = resp;
+                        cmd_run_queue.push_move(m);
+                    };
+
+                    ws_worker.push_move_new_request(r);
+                }
             }
 
             sent_end_message = true;

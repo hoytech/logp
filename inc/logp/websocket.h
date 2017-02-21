@@ -12,6 +12,8 @@
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 
+#include "nlohmann/json.hpp"
+
 #include "websocketpp/config/core.hpp"
 #include "websocketpp/client.hpp"
 #include "websocketpp/uri.hpp"
@@ -22,34 +24,19 @@ namespace logp { namespace websocket {
 
 
 
-class input_msg {
-  public:
-    input_msg(std::string data_) : data(data_) {}
-
-    // Input
-
-    std::string data;
-};
-
-class output_msg {
-  public:
-    output_msg(std::string data_) : data(data_) {}
-
-    // Input
-
-    std::string data;
-};
-
-
 
 class request {
   public:
-    request(uint64_t request_id_, std::function<void(std::string &)> cb_) : request_id(request_id_), cb(cb_) {}
+    std::string render_body();
 
-    uint64_t request_id;
-    std::function<void(std::string &)> cb;
+    std::string op;
+    nlohmann::json body;
+    std::function<void(nlohmann::json &)> on_data;
+    std::function<void()> on_finished_history;
+
+    uint64_t request_id = 0;
+    uint64_t latest_entry = 0;
 };
-
 
 
 
@@ -60,24 +47,28 @@ class worker {
         run();
     }
 
-    void send_message_move(std::string &op, std::string &msg, std::function<void(std::string &)> cb);
-
-    // Accessed by connection
-    std::string uri;
-    bool tls_no_verify = false;
-    std::unordered_map<uint64_t, request> active_requests;
+    void push_move_new_request(request &r);
 
   private:
+    friend class connection;
+
     void setup();
     void run();
     void run_event_loop();
-    void trigger_input_queue();
+    void trigger_activity_pipe();
+    std::string prepare_new_request(request &req);
+    std::string render_request(request &req);
 
+    std::string uri;
     std::string token;
+    bool tls_no_verify = false;
+
     std::thread t;
     uint64_t next_request_id = 1;
-    int input_queue_activity_pipe[2];
-    hoytech::protected_queue<input_msg> input_queue;
+    int activity_pipe[2];
+    hoytech::protected_queue<request> new_requests_queue;
+
+    std::unordered_map<uint64_t, request> active_requests;
 };
 
 

@@ -25,10 +25,14 @@ void base::parse_params(int argc, char **argv) {
     new_long_options.push_back({ 0,0,0,0 });
 
 
+    std::string optstr = "+h?";
+    optstr += getopt_string();
+
+
     int arg, option_index;
 
     optind = 1;
-    while ((arg = getopt_long_only(argc, argv, "+", new_long_options.data(), &option_index)) != -1) {
+    while ((arg = getopt_long(argc, argv, optstr.c_str(), new_long_options.data(), &option_index)) != -1) {
         if (arg == 'h' || arg == '?') print_usage_and_exit();
         process_option(arg);
     }

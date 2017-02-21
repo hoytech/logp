@@ -39,13 +39,15 @@ int main(int argc, char **argv) {
 
     struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
-        {"version", no_argument, 0, 'V'},
+        {"version", no_argument, 0, 0},
+        {"verbose", no_argument, 0, 'v'},
+        {"quiet", no_argument, 0, 'q'},
         {"config", required_argument, 0, 'c'},
         {0, 0, 0, 0}
     };
 
     optind = 1;
-    while ((arg = getopt_long_only(argc, argv, "+c:", long_options, &option_index)) != -1) {
+    while ((arg = getopt_long(argc, argv, "+c:vq", long_options, &option_index)) != -1) {
         switch (arg) {
           case '?':
           case 'h':
@@ -54,6 +56,20 @@ int main(int argc, char **argv) {
           case 'c':
             opt_config = std::string(optarg);
             break;
+
+          case 'v':
+            ::conf.verbosity++;
+            break;
+
+          case 'q':
+            ::conf.verbosity--;
+            break;
+
+          case 0:
+            if (strcmp(long_options[option_index].name, "version") == 0) {
+                std::cout << "logp version 0.100" << std::endl;
+                exit(0);
+            }
 
           default:
             exit(1);

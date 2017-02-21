@@ -12,6 +12,7 @@
 
 namespace logp { namespace cmd {
 
+
 const char *ps::usage() {
     static const char *u =
         "logp ps [options]\n"
@@ -20,6 +21,8 @@ const char *ps::usage() {
 
     return u;
 }
+
+const char *ps::getopt_string() { return "+f"; }
 
 struct option *ps::get_long_options() {
     static struct option opts[] = {
@@ -37,9 +40,6 @@ void ps::process_option(int arg) {
         break;
 
       case 0:
-        //if (strcmp(long_options[option_index].name, "stderr") == 0) {
-        //    capture_stderr = true;
-        //}
         break;
     };
 }
@@ -48,16 +48,19 @@ void ps::execute() {
     logp::websocket::worker ws_worker;
 
     {
-        nlohmann::json body;
-        body["from"] = 0;
+        logp::websocket::request r;
 
-        std::string op("get");
-        std::string msg_str = body.dump();
+        r.op = "get";
+        r.body = {{"from", 0}};
+        r.on_data = [&](nlohmann::json &resp) {
+            std::cout << "GOT: " << resp.dump() << std::endl;
+        };
+        r.on_finished_history = [&]{
+           if (!follow) exit(0);
+        };
 
-        ws_worker.send_message_move(op, msg_str, [&](std::string &resp) {
-            std::cout << "GOT: " << resp << std::endl;
-        });
-    } 
+        ws_worker.push_move_new_request(r);
+    }
 
     pause();
 }
