@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <thread>
 
 #include "nlohmann/json.hpp"
 
@@ -85,7 +86,7 @@ void run::execute() {
 
     logp::signal_watcher sigwatcher;
 
-    sigwatcher.subscribe(SIGCHLD, [&]() {
+    sigwatcher.subscribe(SIGCHLD, [&](){
         struct timeval tv;
         gettimeofday(&tv, nullptr);
 
@@ -100,10 +101,27 @@ void run::execute() {
         }
     });
 
-    sigwatcher.ignore(SIGHUP);
-    sigwatcher.ignore(SIGINT);
-    sigwatcher.ignore(SIGQUIT);
-    sigwatcher.ignore(SIGTERM);
+    std::thread kill_timeout_thread;
+    bool kill_timeout_normal_shutdown = false;
+    bool kill_timeout_thread_started = false;
+
+    auto kill_signal_handler = [&](){
+        if (kill_timeout_thread_started) return;
+        kill_timeout_thread_started = true;
+
+        if (!kill_timeout_normal_shutdown) PRINT_WARNING << "attempting to communicate with log periodic server, please wait...";
+
+        kill_timeout_thread = std::thread([](){
+            sleep(4);
+            PRINT_ERROR << "was unable to communicate with log periodic server";
+            exit(1);
+        });
+    };
+
+    sigwatcher.subscribe(SIGHUP, kill_signal_handler);
+    sigwatcher.subscribe(SIGINT, kill_signal_handler);
+    sigwatcher.subscribe(SIGQUIT, kill_signal_handler);
+    sigwatcher.subscribe(SIGTERM, kill_signal_handler);
 
     sigwatcher.run();
 
@@ -126,19 +144,25 @@ void run::execute() {
         } catch (std::exception &e) {
             PRINT_WARNING << "unable to get parent process name: " << e.what();
         }
+#else
+        PRINT_WARNING << "--parent-cmd is currently only supported on linux, ignoring";
 #endif
     }
 
     pid_t fork_ret = fork();
 
     if (fork_ret == -1) {
-        throw std::runtime_error(std::string("unable to fork: ") + strerror(errno));
+        PRINT_ERROR << "unable to fork: " << strerror(errno);
+        _exit(1);
     } else if (fork_ret == 0) {
         sigwatcher.unblock();
         execvp(my_argv[optind], my_argv+optind);
         PRINT_ERROR << "Couldn't exec " << my_argv[optind] << " : " << strerror(errno);
         _exit(1);
     }
+
+
+    PRINT_INFO << "Executing " << my_argv[optind] << " (pid " << fork_ret << ")";
 
 
     {
@@ -197,11 +221,22 @@ void run::execute() {
                 end_timestamp = m.timestamp;
                 wait_status = m.wait_status;
                 pid_exited = true;
+
+                PRINT_INFO << "Process exited (" <<
+                    (WIFEXITED(wait_status) ? (std::string("status ") + std::to_string(WEXITSTATUS(wait_status)))
+                     : WIFSIGNALED(wait_status) ? (std::string("signal ") + std::to_string(WTERMSIG(wait_status)))
+                     : "other")
+                    << ")"
+                ;
+
+                kill_timeout_normal_shutdown = true;
+                kill_signal_handler();
             }
         } else if (m.type == run_msg_type::WEBSOCKET_RESPONSE) {
             if (!sent_end_message) {
                 try {
                     if (m.response["status"] == "ok") {
+                        PRINT_INFO << "log periodic server acked process start";
                         event_id = m.response["ev"];
                         have_event_id = true;
                     } else {
@@ -213,6 +248,7 @@ void run::execute() {
             } else {
                 try {
                     if (m.response["status"] == "ok") {
+                        PRINT_INFO << "log periodic server acked process termination";
                         exit(WEXITSTATUS(wait_status));
                     } else {
                         PRINT_ERROR << "status was not OK on end response: " << m.response.dump();

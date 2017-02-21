@@ -97,8 +97,8 @@ void worker::run() {
             try {
                 run_event_loop();
             } catch (std::exception &e) {
-                PRINT_INFO << "websocket: " << e.what() << " (sleeping for 5 seconds)";
-                sleep(5);
+                PRINT_INFO << "websocket: " << e.what() << " (sleeping for 2 seconds)";
+                sleep(2);
             }
         }
     });
@@ -351,7 +351,7 @@ void connection::setup() {
 
     wspp_client.connect(wspp_conn);
 
-    PRINT_INFO << "connected to end-point: " << parent_worker->uri;
+    PRINT_INFO << "connected to endpoint: " << parent_worker->uri;
 }
 
 

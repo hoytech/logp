@@ -140,8 +140,19 @@ int main(int argc, char **argv) {
     }
 
     if (c) {
-        c->parse_params(argc-optind, argv+optind);
-        c->execute();
+        try {
+            c->parse_params(argc-optind, argv+optind);
+        } catch (std::exception &e) {
+            PRINT_ERROR << "failure parsing params: " << e.what();
+            exit(1);
+        };
+
+        try {
+            c->execute();
+        } catch (std::exception &e) {
+            PRINT_ERROR << "failure executing: " << e.what();
+            exit(1);
+        };
     } else {
         PRINT_ERROR << "Unknown command: " << command;
         usage();
