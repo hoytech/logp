@@ -18,10 +18,19 @@
 logp::config conf;
 
 
+#define LOGP_VERSION "0.1.0"
+
+
+const char *logp_global_usage_string =
+    "\nlogp v" LOGP_VERSION " -- Command-line client for Log Periodic\n"
+    "Copyright (C) Log Periodic Ltd.  https://logperiodic.com\n\n"
+  ;
+
+
 
 void usage() {
-    std::cerr <<
-        "\nUsage: logp [global options] <command> [command options]\n\n"
+    std::cerr << logp_global_usage_string <<
+        "Usage: logp [global options] <command> [command options]\n\n"
         "  Commands:\n"
         "    run   Execute the given command, upload information\n"
         "    ps    See what is currently running, history, follow new runs\n"
@@ -67,7 +76,7 @@ int main(int argc, char **argv) {
 
           case 0:
             if (strcmp(long_options[option_index].name, "version") == 0) {
-                std::cout << "logp version 0.100" << std::endl;
+                std::cout << "logp v" LOGP_VERSION << std::endl;
                 exit(0);
             }
 

@@ -7,6 +7,9 @@
 #include "logp/cmd/base.h"
 
 
+extern const char *logp_global_usage_string;
+
+
 namespace logp { namespace cmd {
 
 
@@ -38,9 +41,8 @@ void base::parse_params(int argc, char **argv) {
     my_argv = argv;
 }
 
-
 void base::print_usage_and_exit() {
-    std::cerr << "\nUsage: " << usage() << std::endl;
+    std::cerr << ::logp_global_usage_string << "Usage: " << usage() << std::endl;
     exit(1);
 }
 
