@@ -66,6 +66,11 @@ static std::string colour_red(std::string s) {
     return s;
 }
 
+static std::string colour_green(std::string s) {
+    if (use_ansi_colours) return std::string("\033[0;32m") + s + std::string("\033[0m");
+    return s;
+}
+
 
 
 static std::string render_in_progress_header() {
@@ -251,18 +256,18 @@ void process_follow(nlohmann::json &res) {
         std::string exit_reason;
         if (res["da"].count("exit")) {
             uint64_t exit_code = res["da"]["exit"];
-            if (exit_code) exit_reason = colour_red(std::string("exit code ") + std::to_string(exit_code));
-            else exit_reason = "normal exit";
+            if (exit_code) exit_reason = colour_red(std::string("✗")) + std::string(" exit code ") + std::to_string(exit_code);
+            else exit_reason = colour_green(std::string("✓"));
         } else if (res["da"].count("signal")) {
             std::string sig = res["da"]["signal"];
-            exit_reason = colour_red(std::string("killed by ") + sig);
+            exit_reason = colour_red(std::string("✗")) + std::string(" killed by ") + sig;
         } else {
             exit_reason = "?";
         }
 
         std::cout << "[" << render_time(res["en"]) << "] ";
         print_lane_chart(lanes, "┴", rec.lane);
-        std::cout << " -    " << exit_reason << " (evid=" << rec.evid << " runtime=" << render_duration(rec.start, res["en"]) << ")";
+        std::cout << " -    " << exit_reason << "  (evid=" << rec.evid << " runtime=" << render_duration(rec.start, res["en"]) << ")";
         std::cout << std::endl;
 
         lanes[rec.lane] = false;
