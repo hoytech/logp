@@ -52,6 +52,19 @@ void ps::process_option(int arg, int) {
 
 
 static bool finished_history = false;
+static bool use_ansi_colours = false;
+
+
+
+static std::string colour_bold(std::string s) {
+    if (use_ansi_colours) return std::string("\033[1m") + s + std::string("\033[0m");
+    return s;
+}
+
+static std::string colour_red(std::string s) {
+    if (use_ansi_colours) return std::string("\033[0;31m") + s + std::string("\033[0m");
+    return s;
+}
 
 
 
@@ -196,7 +209,7 @@ void print_lane_chart(std::vector<bool> &lanes, std::string override, uint64_t o
 
 void process_follow(nlohmann::json &res) {
     static std::unordered_map<uint64_t, event_rec> evid_to_rec;
-    static std::vector<bool> lanes;
+    static std::vector<bool> lanes(10, false);
 
     if (res.count("st")) {
         uint64_t lane = 0;
@@ -223,7 +236,7 @@ void process_follow(nlohmann::json &res) {
 
         std::cout << "[" << render_time(res["st"]) << "] ";
         print_lane_chart(lanes, finished_history ? "┬" : "│", lane);
-        std::cout << "\t[+] " << render_command(res) << " (" << render_userhost(res) << " evid=" << evid << " pid=" << pid << ")";
+        std::cout << " +  " << colour_bold(render_command(res)) << "  (" << render_userhost(res) << " evid=" << evid << " pid=" << pid << ")";
         std::cout << std::endl;
     } else if (res.count("en")) {
         auto find_res = evid_to_rec.find(res["ev"]);
@@ -238,18 +251,18 @@ void process_follow(nlohmann::json &res) {
         std::string exit_reason;
         if (res["da"].count("exit")) {
             uint64_t exit_code = res["da"]["exit"];
-            if (exit_code) exit_reason = std::string("exit code ") + std::to_string(exit_code);
+            if (exit_code) exit_reason = colour_red(std::string("exit code ") + std::to_string(exit_code));
             else exit_reason = "normal exit";
         } else if (res["da"].count("signal")) {
             std::string sig = res["da"]["signal"];
-            exit_reason = std::string("killed by ") + sig;
+            exit_reason = colour_red(std::string("killed by ") + sig);
         } else {
             exit_reason = "?";
         }
 
         std::cout << "[" << render_time(res["en"]) << "] ";
         print_lane_chart(lanes, "┴", rec.lane);
-        std::cout << "\t[-]   " << exit_reason << " (took " << render_duration(rec.start, res["en"]) << ")";
+        std::cout << " -    " << exit_reason << " (took " << render_duration(rec.start, res["en"]) << ")";
         std::cout << std::endl;
 
         lanes[rec.lane] = false;
@@ -263,6 +276,8 @@ void process_follow(nlohmann::json &res) {
 
 
 void ps::execute() {
+    if (::isatty(1)) use_ansi_colours = true;
+
     logp::websocket::worker ws_worker;
 
     if (!follow) {
