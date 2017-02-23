@@ -262,7 +262,7 @@ void process_follow(nlohmann::json &res) {
 
         std::cout << "[" << render_time(res["en"]) << "] ";
         print_lane_chart(lanes, "┴", rec.lane);
-        std::cout << " -    " << exit_reason << " (took " << render_duration(rec.start, res["en"]) << ")";
+        std::cout << " -    " << exit_reason << " (evid=" << rec.evid << " runtime=" << render_duration(rec.start, res["en"]) << ")";
         std::cout << std::endl;
 
         lanes[rec.lane] = false;
