@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <string>
+#include <exception>
 
 #include "nlohmann/json.hpp"
 
@@ -48,6 +49,12 @@ void ps::process_option(int arg, int) {
 
 
 
+
+
+static bool finished_history = false;
+
+
+
 static std::string render_in_progress_header() {
     return "EVID\tSTART\tUSER@HOSTNAME\t\tPID\tCMD";
 }
@@ -58,10 +65,25 @@ static std::string render_command(nlohmann::json &res) {
 
     if (!res.count("da") || !res["da"].count("cmd")) return "?";
 
-    for (auto &s : res["da"]["cmd"]) {
-        // FIXME: proper escaping, remove trailing space
-        output += s;
-        output += " ";
+    auto &cmd = res["da"]["cmd"];
+
+    for (size_t i=0; i<cmd.size(); i++) {
+        std::string v = cmd[i];
+
+        if (v.find_first_of(" \t\r\n$<>{}'\"") != std::string::npos) {
+            size_t pos = 0;
+            std::string search = "'";
+            std::string replace = "'\\''";
+            while ((pos = v.find(search, pos)) != std::string::npos) {
+                 v.replace(pos, search.length(), replace);
+                 pos += replace.length();
+            }
+
+            v = std::string("'") + v + std::string("'");
+        }
+
+        output += v;
+        if (i != cmd.size()-1) output += " ";
     }
 
     return output;
@@ -82,7 +104,7 @@ static std::string render_userhost(nlohmann::json &res) {
 }
 
 
-static std::string render_time(uint64_t start, uint64_t end=0) {
+static std::string render_duration(uint64_t start, uint64_t end=0) {
     start /= 1000000;
 
     if (end == 0) end = ::time(nullptr);
@@ -110,6 +132,19 @@ static std::string render_time(uint64_t start, uint64_t end=0) {
 }
 
 
+static std::string render_time(uint64_t time_us) {
+    time_t time_s = time_us / 1000000;
+
+    struct tm timeres;
+    if (!localtime_r(&time_s, &timeres)) throw std::runtime_error(std::string("error parsing time"));
+
+    char buf[100];
+    strftime(buf, sizeof(buf), "%b%d %H:%M:%S", &timeres);
+
+    return std::string(buf);
+}
+
+
 
 
 static std::string render_in_progress(nlohmann::json &res) {
@@ -121,7 +156,7 @@ static std::string render_in_progress(nlohmann::json &res) {
     output += res.count("ev") ? std::to_string(static_cast<uint64_t>(res["ev"])) : "?";
     output += "\t";
 
-    output += res.count("st") ? render_time(res["st"]) : "?";
+    output += res.count("st") ? render_duration(res["st"]) : "?";
     output += "\t";
 
     output += render_userhost(res);
@@ -153,7 +188,7 @@ class event_rec {
 void print_lane_chart(std::vector<bool> &lanes, std::string override, uint64_t override_index) {
     for (uint64_t i=0; i<lanes.size(); i++) {
         if (override.size() && i == override_index) std::cout << override;
-        else std::cout << (lanes[i] ? "|" : " ");
+        else std::cout << (lanes[i] ? "│" : " ");
     }
 }
 
@@ -186,8 +221,9 @@ void process_follow(nlohmann::json &res) {
                             std::forward_as_tuple(res["ev"]),
                             std::forward_as_tuple(res["st"], lane, evid, pid));
 
-        print_lane_chart(lanes, "+", lane);
-        std::cout << " [" << evid << "] " << render_command(res) << " (" << render_userhost(res) << " pid " << pid << ")";
+        std::cout << "[" << render_time(res["st"]) << "] ";
+        print_lane_chart(lanes, finished_history ? "┬" : "│", lane);
+        std::cout << "\t[+] " << render_command(res) << " (" << render_userhost(res) << " evid=" << evid << " pid=" << pid << ")";
         std::cout << std::endl;
     } else if (res.count("en")) {
         auto find_res = evid_to_rec.find(res["ev"]);
@@ -211,8 +247,9 @@ void process_follow(nlohmann::json &res) {
             exit_reason = "?";
         }
 
-        print_lane_chart(lanes, "-", rec.lane);
-        std::cout << " [" << rec.evid << "]   " << exit_reason << " (took " << render_time(rec.start, res["en"]) << ")";
+        std::cout << "[" << render_time(res["en"]) << "] ";
+        print_lane_chart(lanes, "┴", rec.lane);
+        std::cout << "\t[-]   " << exit_reason << " (took " << render_duration(rec.start, res["en"]) << ")";
         std::cout << std::endl;
 
         lanes[rec.lane] = false;
@@ -246,6 +283,7 @@ void ps::execute() {
         };
         r.on_finished_history = [&]{
            if (!follow) exit(0);
+           finished_history = true;
         };
 
         ws_worker.push_move_new_request(r);
