@@ -331,7 +331,21 @@ void connection::setup() {
                         if (p.count("latest_entry_id")) {
                             req.latest_entry = std::max(req.latest_entry, static_cast<uint64_t>(p["latest_entry_id"]));
                         }
-                        if (p.count("finished_history") && req.on_finished_history) req.on_finished_history();
+
+                        if (p.count("finished_history") && req.on_finished_history) {
+                            req.on_finished_history();
+                        }
+
+                        if (p.count("pause")) {
+                            std::string unpause_key = p["id"];
+
+                            logp::websocket::request r;
+
+                            r.op = "res";
+                            r.body = {{ "k", unpause_key }};
+
+                            parent_worker->push_move_new_request(r);
+                        }
                     }
                 }
             }
