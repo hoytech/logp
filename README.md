@@ -37,7 +37,7 @@ You can see a list of currently running jobs with `logp ps`:
 Or follow a tail of job activity with `logp ps -f`:
 
     $ logp ps -f
-    [Feb24 24:41:49] │          +  my-command --options  (doug@comet evid=479 pid=21261)
+    [Feb24 14:41:49] │          +  my-command --options  (doug@comet evid=479 pid=21261)
     [Feb24 14:43:08] │┬         +  sleep 5  (doug@comet evid=480 pid=21267)
     [Feb24 14:43:09] ││┬        +  sleep 10  (doug@comet evid=481 pid=21269)
     [Feb24 14:43:13] │┴│        -    ✓  (evid=480 runtime=5s)
