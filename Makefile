@@ -43,5 +43,5 @@ main.o: inc/logp/cmd/*.h
 
 lib/yaml-cpp/build/libyaml-cpp.a:
 	mkdir -p lib/yaml-cpp/build/
-	(cd lib/yaml-cpp/build/ ; cmake ..)
-	(cd lib/yaml-cpp/build/ ; make yaml-cpp)
+	cd lib/yaml-cpp/build/ && cmake ..
+	cd lib/yaml-cpp/build/ && $(MAKE) yaml-cpp
