@@ -1,5 +1,0 @@
-logp run -- sleep 5
-logp run --tag blah -- sleep 3
-logp tail /var/log/nginx/error.log
-echo '{a:1}' | logp json
-logp point data=1 blah=3

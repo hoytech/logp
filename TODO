@@ -1,0 +1,10 @@
+! unify config file and top-level command-line options: need to parse config file first, then apply options
+* colour error output like "logp: error: Expected a command,"
+* gather stdout/stderr -- rate limit their upload
+* save entries to local DB so can be uploaded later
+* configurable timeouts
+* send version info to eventstore
+* tail/cat stdout/stderr
+* way to manually terminate an event
+  ? kill
+? tags
