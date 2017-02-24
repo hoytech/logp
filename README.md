@@ -7,7 +7,7 @@ Log Periodic is a real-time event logging system. You can learn more at [logperi
 
 On debian/ubuntu systems:
 
-    sudo apt-get install build-essential g++ libssl-dev
+    sudo apt-get install build-essential g++ perl libssl-dev
     git submodule update --init
     make -j 4
 

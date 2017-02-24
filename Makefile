@@ -25,19 +25,24 @@ endif
 all: logp
 
 clean:
-	rm -f *.o cmd/*.o *.so logp
+	rm -f *.o cmd/*.o *.so logp _buildinfo.h
 
 realclean: clean
 	rm -rf lib/yaml-cpp/build/
 
-logp: $(PROGOBJS) Makefile $(BUNDLED_LIBS)
+_buildinfo.h:
+	perl -e '$$v = `git describe --tags --match "logp-*"`; $$v =~ s/^logp-|\s*$$//g; print qq{#define LOGP_VERSION "$$v"\n}' > _buildinfo.h
+
+logp: $(PROGOBJS) $(BUNDLED_LIBS)
 	$(CXX) $(CXXFLAGS) -L. $(LDFLAGS) $(PROGOBJS) -lssl -lcrypto -lpthread -o $@ $(BUNDLED_LIBS)
 
-main.o: inc/logp/cmd/*.h
-
-%.o: %.cpp inc/logp/*.h Makefile
+%.o: %.cpp inc/logp/*.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+#cmd/%.o: inc/logp/cmd/%.h
+cmd/*.o: inc/logp/cmd/*.h
+
+main.o: _buildinfo.h inc/logp/cmd/*.h
 
 ## 3rd party deps
 

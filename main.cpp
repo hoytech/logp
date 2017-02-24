@@ -18,7 +18,7 @@
 logp::config conf;
 
 
-#define LOGP_VERSION "0.1.0"
+#include "_buildinfo.h"
 
 
 const char *logp_global_usage_string =
