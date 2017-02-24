@@ -39,7 +39,6 @@ logp: $(PROGOBJS) $(BUNDLED_LIBS)
 %.o: %.cpp inc/logp/*.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-#cmd/%.o: inc/logp/cmd/%.h
 cmd/*.o: inc/logp/cmd/*.h
 
 main.o: _buildinfo.h inc/logp/cmd/*.h
