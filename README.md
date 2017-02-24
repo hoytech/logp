@@ -2,10 +2,12 @@
 
 Log Periodic is a real-time event logging system. You can learn more at [logperiodic.com](https://logperiodic.com).
 
+This is the source code for the command-line interface to Log Periodic. See our [https://logperiodic.com/docs#logp-command-line](command-line documentation) for more details.
+
 
 ## Compilation
 
-On debian/ubuntu systems:
+On Debian/Ubuntu systems:
 
     sudo apt-get install build-essential g++ perl libssl-dev
     git submodule update --init
@@ -14,7 +16,7 @@ On debian/ubuntu systems:
 
 ## Configuration
 
-In order to use the `logp` client, you first need to get an API key from the Log Periodic dashboard. Then you should put the following config in `~/.logp` or `/etc/logp.conf` :
+In order to use the `logp` client, you first need to get an API key from the Log Periodic dashboard. Then you should put the following config in `~/.logp` or `/etc/logp.conf` (replacing with your own API key of course):
 
     apikey: zrwoszvidAGW09sfiCr3Ii-YIvyeW1oxEMv8lKgyJVhW3
 

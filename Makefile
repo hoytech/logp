@@ -28,7 +28,7 @@ clean:
 	rm -f *.o cmd/*.o *.so logp _buildinfo.h
 
 realclean: clean
-	rm -rf lib/yaml-cpp/build/
+	rm -rf lib/yaml-cpp/build/ dist
 
 _buildinfo.h:
 	perl -e '$$v = `git describe --tags --match "logp-*"`; $$v =~ s/^logp-|\s*$$//g; print qq{#define LOGP_VERSION "$$v"\n}' > _buildinfo.h
