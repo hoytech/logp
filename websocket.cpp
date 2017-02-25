@@ -286,10 +286,10 @@ void connection::setup() {
 
         uint64_t request_id;
         bool fin = false;
+        std::string header_str;
         std::string body_str;
 
         try {
-            std::string header_str;
             std::getline(ss, header_str);
 
             auto json = nlohmann::json::parse(header_str);
@@ -300,6 +300,7 @@ void connection::setup() {
             std::getline(ss, body_str);
         } catch (std::exception &e) {
             PRINT_WARNING << "unable to parse websocket header, ignoring: " << e.what();
+            PRINT_DEBUG << "header = " << header_str;
             return;
         }
 
@@ -315,7 +316,10 @@ void connection::setup() {
         try {
             auto json = nlohmann::json::parse(body_str);
 
-            if (req.op == "add") {
+            if (json.count("err")) {
+                std::string err = json["err"];
+                PRINT_WARNING << "got error from log periodic server: " << err;
+            } else if (req.op == "add") {
                 if (req.on_data) req.on_data(json);
             } else if (req.op == "get") {
                 for (auto elem : json) {
@@ -351,6 +355,7 @@ void connection::setup() {
             }
         } catch (std::exception &e) {
             PRINT_WARNING << "unable to parse websocket body, ignoring: " << e.what();
+            PRINT_DEBUG << "body = " << body_str;
             return;
         }
 
