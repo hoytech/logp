@@ -30,7 +30,7 @@ clean:
 realclean: clean
 	rm -rf lib/yaml-cpp/build/ dist
 
-_buildinfo.h:
+_buildinfo.h: .git/refs/heads/master
 	perl -e '$$v = `git describe --tags --match "logp-*"`; $$v =~ s/^logp-|\s*$$//g; print qq{#define LOGP_VERSION "$$v"\n}' > _buildinfo.h
 
 logp: $(PROGOBJS) $(BUNDLED_LIBS)
