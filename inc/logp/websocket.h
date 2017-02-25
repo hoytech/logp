@@ -57,6 +57,7 @@ class worker {
     void run_event_loop();
     void trigger_activity_pipe();
     std::string prepare_new_request(request &req);
+    std::string prepare_new_request(request &req, uint64_t request_id);
     std::string render_request(request &req);
 
     std::string uri;

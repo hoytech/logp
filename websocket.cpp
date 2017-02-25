@@ -71,17 +71,24 @@ std::string worker::prepare_new_request(request &r) {
 
     r.request_id = request_id;
 
+    return prepare_new_request(r, request_id);
+}
+
+std::string worker::prepare_new_request(request &r, uint64_t request_id) {
     std::string initial_message = render_request(r);
 
-    active_requests.emplace(std::piecewise_construct,
-                            std::forward_as_tuple(request_id),
-                            std::forward_as_tuple(std::move(r)));
+    if (request_id) {
+        active_requests.emplace(std::piecewise_construct,
+                                std::forward_as_tuple(request_id),
+                                std::forward_as_tuple(std::move(r)));
+    }
 
     return std::move(initial_message);
 }
 
 std::string worker::render_request(request &r) {
-    nlohmann::json j = {{ "id", r.request_id }, { "op", r.op }, { "tk", token }};
+    nlohmann::json j = {{ "op", r.op }};
+    if (r.request_id) j["id"] = r.request_id;
 
     std::string full_msg = j.dump();
     full_msg += "\n";
@@ -108,6 +115,17 @@ void worker::run() {
 void worker::run_event_loop() {
     connection c(this);
 
+    {
+        logp::websocket::request r;
+
+        r.op = "ini";
+        r.body = {{ "tk", token }};
+
+        std::string msg = prepare_new_request(r, 0);
+        c.send_message_move(msg);
+    }
+
+    // Re-send any live requests
     for (auto it : active_requests) {
         std::string msg = render_request(it.second);
         c.send_message_move(msg);
@@ -284,7 +302,7 @@ void connection::setup() {
     wspp_client.set_message_handler([this](websocketpp::connection_hdl, websocketpp::client<websocketpp::config::core>::message_ptr msg) {
         std::stringstream ss(msg->get_payload());
 
-        uint64_t request_id;
+        uint64_t request_id = 0;
         bool fin = false;
         std::string header_str;
         std::string body_str;
@@ -294,7 +312,11 @@ void connection::setup() {
 
             auto json = nlohmann::json::parse(header_str);
 
-            request_id = json["id"];
+            if (json.count("id")) {
+                request_id = json["id"];
+                if (request_id == 0) throw std::runtime_error("unexpected request_id of 0");
+            }
+
             if (json.count("fin")) fin = json["fin"];
 
             std::getline(ss, body_str);
@@ -304,23 +326,35 @@ void connection::setup() {
             return;
         }
 
-        auto find_res = parent_worker->active_requests.find(request_id);
-
-        if (find_res == parent_worker->active_requests.end()) {
-            PRINT_WARNING << "response came for unknown request id, ignoring";
-            return;
-        }
-
-        auto &req = find_res->second;
-
         try {
             auto json = nlohmann::json::parse(body_str);
 
+            if (request_id == 0) {
+                if (json.count("err")) {
+                    std::string err = json["err"];
+                    PRINT_WARNING << "connection-level error from server: " << err;
+                }
+
+                if (json.count("perm")) {
+                    uint64_t permissions = json["perm"];
+                    PRINT_DEBUG << "token OK, permissions = " << permissions;
+                }
+
+                return;
+            }
+
+            auto find_res = parent_worker->active_requests.find(request_id);
+
+            if (find_res == parent_worker->active_requests.end()) {
+                PRINT_WARNING << "response came for unknown request id, ignoring";
+                return;
+            }
+
+            auto &req = find_res->second;
+
             if (json.count("err")) {
                 std::string err = json["err"];
-                PRINT_WARNING << "got error from log periodic server: " << err;
-            } else if (req.op == "add") {
-                if (req.on_data) req.on_data(json);
+                PRINT_WARNING << "error from server for " << req.op << " op: " << err;
             } else if (req.op == "get") {
                 for (auto elem : json) {
                     if (elem.count("e")) {
@@ -352,6 +386,8 @@ void connection::setup() {
                         }
                     }
                 }
+            } else {
+                if (req.on_data) req.on_data(json);
             }
         } catch (std::exception &e) {
             PRINT_WARNING << "unable to parse websocket body, ignoring: " << e.what();
