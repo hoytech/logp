@@ -124,7 +124,7 @@ void ping::execute() {
                 uint64_t end = logp::util::curr_time();
 
                 uint64_t server_time = res["time"];
-                std::cout << "PONG rtt=" << format_ms(end-start) << "ms delta=" << format_ping_delta(start, end, server_time) << std::endl;
+                std::cout << "PONG rtt=" << format_ms(end-start) << "ms clock_diff=" << format_ping_delta(start, end, server_time) << std::endl;
                 if (pings_left == 1) exit(0);
                 else if (pings_left > 1) pings_left--;
 
@@ -149,7 +149,6 @@ void ping::execute() {
             std::cout << "  Established in: " << format_ms(ini_end-ini_start) << "ms\n";
             std::cout << "  Protocol:       " << prot << "\n";
             std::cout << "  Remote time:    " << format_time(time) << "\n";
-            std::cout << "  Time delta:     " << format_ping_delta(ini_start, ini_end, time) << "\n";
             std::cout << std::endl;
 
             uint64_t perm = r["perm"];
@@ -170,6 +169,27 @@ void ping::execute() {
             PRINT_ERROR << "ini request failed";
             exit(1);
         }
+    };
+
+    int retries = 3;
+
+    ws_worker.on_disconnect = [&](std::string reason){
+        std::string msg = "Connection failure: ";
+        msg += reason;
+
+        retries--;
+
+        if (retries > 0) {
+            msg += " [retrying ";
+            msg += std::to_string(retries);
+            msg += " more times]";
+        } else {
+            msg += " [aborting]";
+        }
+
+        PRINT_ERROR << msg;
+
+        if (retries <= 0) exit(1);
     };
 
     ws_worker.run();

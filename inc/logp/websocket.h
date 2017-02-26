@@ -49,6 +49,8 @@ class worker {
     void push_move_new_request(request &r);
     void run();
     std::function<void(nlohmann::json &)> on_ini_response;
+    std::function<void(std::string reason)> on_disconnect;
+    int reconnect_delay = 2;
 
     std::string uri;
     std::string token;

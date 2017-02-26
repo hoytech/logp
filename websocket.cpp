@@ -106,7 +106,8 @@ void worker::run() {
                 run_event_loop();
             } catch (std::exception &e) {
                 PRINT_INFO << "websocket: " << e.what() << " (sleeping for 2 seconds)";
-                logp::util::sleep_seconds(2);
+                if (on_disconnect) on_disconnect(e.what());
+                logp::util::sleep_seconds(reconnect_delay);
             }
         }
     });
