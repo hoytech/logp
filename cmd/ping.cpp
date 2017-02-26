@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <iostream>
 #include <string>
@@ -53,17 +54,28 @@ void ping::process_option(int arg, int, char *optarg) {
 
 
 
+std::string format_ms(uint64_t time_us) {
+    double d = time_us / 1000.0;
+    char buf[100];
+
+    snprintf(buf, sizeof(buf), "%.1f", d);
+
+    return std::string(buf);
+}
+
+
+
 void ping::execute() {
     logp::websocket::worker ws_worker;
 
     std::cout << "Connecting to:\n";
     std::cout << "  URI: " << ws_worker.uri << "\n";
-    std::cout << "  Key: " << ws_worker.token.substr(0, 4) << "******************\n";
     if (ws_worker.uri.substr(0, 4) == "wss:") {
-        if (ws_worker.tls_no_verify) std::cout << "  TLS Verification OFF!\n"; // FIXME: colour red
+        if (ws_worker.tls_no_verify) std::cout << logp::util::colour_red("  TLS Verification OFF!\n");
     } else if (ws_worker.uri.substr(0, 3) == "ws:") {
-        std::cout << "  Plain-text connection (not wss://)!\n"; // FIXME: colour red
+        std::cout << logp::util::colour_red("  Plain-text connection (not wss://)!\n");
     }
+    std::cout << "  Key: " << ws_worker.token.substr(0, 4) << "******************\n";
     std::cout << std::endl;
 
     uint64_t pings_left = count;
@@ -79,7 +91,7 @@ void ping::execute() {
                 uint64_t end = logp::util::curr_time();
 
                 uint64_t server_time = res["time"];
-                std::cout << "PONG " << (end-start) << "us " << server_time << std::endl;
+                std::cout << "PONG " << format_ms(end-start) << "ms " << server_time << std::endl;
 
                 if (pings_left == 1) exit(0);
                 else if (pings_left > 1) pings_left--;
@@ -92,7 +104,11 @@ void ping::execute() {
         }
     };
 
+    uint64_t ini_start = logp::util::curr_time();
+
     ws_worker.on_ini_response = [&](nlohmann::json &r){
+        uint64_t ini_end = logp::util::curr_time();
+
         if (r["ini"] == "ok") {
             uint64_t prot = r["prot"];
             uint64_t time = r["time"];
@@ -106,8 +122,8 @@ void ping::execute() {
 
             std::cout << "Access:\n";
             if (perm == 0) {
-                std::cout << "  Permissions: NONE (exiting)\n"; // FIXME red
-                exit(0);
+                std::cout << logp::util::colour_red("  Permissions: NONE (exiting)\n");
+                exit(1);
             }
             std::string perm_str;
             if (perm & 1) perm_str += " READ";
@@ -123,28 +139,6 @@ void ping::execute() {
     };
 
     ws_worker.run();
-
-/*
-    {
-        logp::websocket::request r;
-
-        r.op = "get";
-        r.body = {{"from", 0}};
-        r.on_data = [&](nlohmann::json &res) {
-            if (!follow) {
-                std::cout << render_in_progress(res) << std::endl;
-            } else {
-                process_follow(res);
-            }
-        };
-        r.on_finished_history = [&]{
-           if (!follow) exit(0);
-           finished_history = true;
-        };
-
-        ws_worker.push_move_new_request(r);
-    }
-*/
 
     pause();
 }

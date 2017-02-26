@@ -41,6 +41,8 @@ void usage() {
 
 
 int main(int argc, char **argv) {
+    if (::isatty(1)) logp::util::use_ansi_colours = true;
+
     // Argument parsing
 
     int arg, option_index;

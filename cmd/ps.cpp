@@ -11,6 +11,7 @@
 #include "logp/cmd/ps.h"
 #include "logp/websocket.h"
 #include "logp/print.h"
+#include "logp/util.h"
 
 
 namespace logp { namespace cmd {
@@ -52,25 +53,6 @@ void ps::process_option(int arg, int, char *) {
 
 
 static bool finished_history = false;
-static bool use_ansi_colours = false;
-
-
-
-static std::string colour_bold(std::string s) {
-    if (use_ansi_colours) return std::string("\033[1m") + s + std::string("\033[0m");
-    return s;
-}
-
-static std::string colour_red(std::string s) {
-    if (use_ansi_colours) return std::string("\033[0;31m") + s + std::string("\033[0m");
-    return s;
-}
-
-static std::string colour_green(std::string s) {
-    if (use_ansi_colours) return std::string("\033[0;32m") + s + std::string("\033[0m");
-    return s;
-}
-
 
 
 static std::string render_in_progress_header() {
@@ -241,7 +223,7 @@ void process_follow(nlohmann::json &res) {
 
         std::cout << "[" << render_time(res["st"]) << "] ";
         print_lane_chart(lanes, finished_history ? "┬" : "│", lane);
-        std::cout << " +  " << colour_bold(render_command(res)) << "  (" << render_userhost(res) << " evid=" << evid << " pid=" << pid << ")";
+        std::cout << " +  " << logp::util::colour_bold(render_command(res)) << "  (" << render_userhost(res) << " evid=" << evid << " pid=" << pid << ")";
         std::cout << std::endl;
     } else if (res.count("en")) {
         auto find_res = evid_to_rec.find(res["ev"]);
@@ -256,11 +238,11 @@ void process_follow(nlohmann::json &res) {
         std::string exit_reason;
         if (res["da"].count("exit")) {
             uint64_t exit_code = res["da"]["exit"];
-            if (exit_code) exit_reason = colour_red(std::string("✗")) + std::string(" exit code ") + std::to_string(exit_code);
-            else exit_reason = colour_green(std::string("✓"));
+            if (exit_code) exit_reason = logp::util::colour_red(std::string("✗")) + std::string(" exit code ") + std::to_string(exit_code);
+            else exit_reason = logp::util::colour_green(std::string("✓"));
         } else if (res["da"].count("signal")) {
             std::string sig = res["da"]["signal"];
-            exit_reason = colour_red(std::string("✗")) + std::string(" killed by ") + sig;
+            exit_reason = logp::util::colour_red(std::string("✗")) + std::string(" killed by ") + sig;
         } else {
             exit_reason = "?";
         }
@@ -281,8 +263,6 @@ void process_follow(nlohmann::json &res) {
 
 
 void ps::execute() {
-    if (::isatty(1)) use_ansi_colours = true;
-
     logp::websocket::worker ws_worker;
 
     ws_worker.run();

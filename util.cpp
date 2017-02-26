@@ -41,4 +41,25 @@ uint64_t curr_time() {
     return (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
+
+
+
+bool use_ansi_colours = false;
+
+std::string colour_bold(std::string s) {
+    if (use_ansi_colours) return std::string("\033[1m") + s + std::string("\033[0m");
+    return s;
+}
+
+std::string colour_red(std::string s) {
+    if (use_ansi_colours) return std::string("\033[0;31m") + s + std::string("\033[0m");
+    return s;
+}
+
+std::string colour_green(std::string s) {
+    if (use_ansi_colours) return std::string("\033[0;32m") + s + std::string("\033[0m");
+    return s;
+}
+
+
 }}
