@@ -36,7 +36,7 @@ struct option *ps::get_long_options() {
     return opts;
 }
 
-void ps::process_option(int arg, int) {
+void ps::process_option(int arg, int, char *) {
     switch (arg) {
       case 'f':
         follow = true;
@@ -284,6 +284,8 @@ void ps::execute() {
     if (::isatty(1)) use_ansi_colours = true;
 
     logp::websocket::worker ws_worker;
+
+    ws_worker.run();
 
     if (!follow) {
         std::cout << render_in_progress_header() << std::endl;

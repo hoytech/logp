@@ -4,7 +4,7 @@
 
 namespace logp { namespace cmd {
 
-class run : public base {
+class ping : public base {
   public:
     const char *usage();
     const char *getopt_string();
@@ -13,7 +13,7 @@ class run : public base {
     void execute();
 
   private:
-    bool opt_parent_cmd = false;
+    uint64_t count = 0;
 };
 
 }}

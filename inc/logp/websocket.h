@@ -44,25 +44,25 @@ class worker {
   public:
     worker() {
         setup();
-        run();
     }
 
     void push_move_new_request(request &r);
+    void run();
+    std::function<void(nlohmann::json &)> on_ini_response;
+
+    std::string uri;
+    std::string token;
+    bool tls_no_verify = false;
 
   private:
     friend class connection;
 
     void setup();
-    void run();
     void run_event_loop();
     void trigger_activity_pipe();
     std::string prepare_new_request(request &req);
     std::string prepare_new_request(request &req, uint64_t request_id);
     std::string render_request(request &req);
-
-    std::string uri;
-    std::string token;
-    bool tls_no_verify = false;
 
     std::thread t;
     uint64_t next_request_id = 1;

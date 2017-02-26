@@ -6,4 +6,6 @@ void make_fd_nonblocking(int fd);
 
 std::string get_home_dir();
 
+uint64_t curr_time();
+
 }}

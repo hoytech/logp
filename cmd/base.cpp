@@ -35,7 +35,7 @@ void base::parse_params(int argc, char **argv) {
     optind = 1;
     while ((arg = getopt_long(argc, argv, optstr.c_str(), my_long_options.data(), &option_index)) != -1) {
         if (arg == 'h' || arg == '?') print_usage_and_exit();
-        process_option(arg, option_index);
+        process_option(arg, option_index, optarg);
     }
 
     my_argv = argv;

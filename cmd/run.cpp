@@ -44,7 +44,7 @@ struct option *run::get_long_options() {
     return opts;
 }
 
-void run::process_option(int arg, int option_index) {
+void run::process_option(int arg, int option_index, char *) {
     switch (arg) {
       case 0:
         if (strcmp(my_long_options[option_index].name, "parent-cmd") == 0) {
@@ -127,6 +127,8 @@ void run::execute() {
 
 
     logp::websocket::worker ws_worker;
+
+    ws_worker.run();
 
 
     struct timeval start_tv;

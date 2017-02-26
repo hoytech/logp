@@ -6,7 +6,7 @@ CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
 LDFLAGS  =
 
 BUNDLED_LIBS = lib/yaml-cpp/build/libyaml-cpp.a
-PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o cmd/base.o cmd/run.o cmd/ps.o
+PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o cmd/base.o cmd/run.o cmd/ps.o cmd/ping.o
 
 
 ifeq ($(wildcard inc/protected_queue/protected_queue.h),)

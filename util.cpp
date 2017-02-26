@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <pwd.h>
 
 #include <stdexcept>
@@ -32,6 +33,12 @@ std::string get_home_dir() {
     if (home_dir) return std::string(home_dir);
 
     return std::string("");
+}
+
+uint64_t curr_time() {
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    return (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
 }}

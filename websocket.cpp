@@ -66,6 +66,7 @@ void worker::push_move_new_request(request &r) {
 
 
 
+
 std::string worker::prepare_new_request(request &r) {
     uint64_t request_id = next_request_id++;
 
@@ -119,7 +120,7 @@ void worker::run_event_loop() {
         logp::websocket::request r;
 
         r.op = "ini";
-        r.body = {{ "tk", token }};
+        r.body = {{ "tk", token }, { "prot", 1 }};
 
         std::string msg = prepare_new_request(r, 0);
         c.send_message_move(msg);
@@ -335,9 +336,14 @@ void connection::setup() {
                     PRINT_WARNING << "connection-level error from server: " << err;
                 }
 
-                if (json.count("perm")) {
-                    uint64_t permissions = json["perm"];
-                    PRINT_DEBUG << "token OK, permissions = " << permissions;
+                if (json.count("ini")) {
+                    if (parent_worker->on_ini_response) parent_worker->on_ini_response(json);
+
+                    if (json["ini"] == "ok") {
+                        uint64_t permissions = json["perm"];
+                        uint64_t protocol = json["prot"];
+                        PRINT_DEBUG << "ini request OK, permissions = " << permissions << ", protocol = " << protocol;
+                    }
                 }
 
                 return;

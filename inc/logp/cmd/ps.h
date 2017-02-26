@@ -9,7 +9,7 @@ class ps : public base {
     const char *usage();
     const char *getopt_string();
     struct option *get_long_options();
-    void process_option(int arg, int option_index);
+    void process_option(int arg, int option_index, char *optarg);
     void execute();
 
   private:
