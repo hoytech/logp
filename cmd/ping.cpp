@@ -124,7 +124,7 @@ void ping::execute() {
                 uint64_t end = logp::util::curr_time();
 
                 uint64_t server_time = res["time"];
-                std::cout << "PONG rtt=" << format_ms(end-start) << "ms clock_diff=" << format_ping_delta(start, end, server_time) << std::endl;
+                std::cout << "PONG rtt=" << format_ms(end-start) << "ms clock_skew=" << format_ping_delta(start, end, server_time) << std::endl;
                 if (pings_left == 1) exit(0);
                 else if (pings_left > 1) pings_left--;
 
