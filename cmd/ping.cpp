@@ -128,7 +128,7 @@ void ping::execute() {
                 if (pings_left == 1) exit(0);
                 else if (pings_left > 1) pings_left--;
 
-                sleep(1);
+                logp::util::sleep_seconds(1);
                 send_ping();
             };
 
@@ -174,7 +174,7 @@ void ping::execute() {
 
     ws_worker.run();
 
-    pause();
+    logp::util::sleep_forever();
 }
 
 }}

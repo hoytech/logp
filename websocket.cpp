@@ -106,7 +106,7 @@ void worker::run() {
                 run_event_loop();
             } catch (std::exception &e) {
                 PRINT_INFO << "websocket: " << e.what() << " (sleeping for 2 seconds)";
-                sleep(2);
+                logp::util::sleep_seconds(2);
             }
         }
     });

@@ -291,7 +291,7 @@ void ps::execute() {
         ws_worker.push_move_new_request(r);
     }
 
-    pause();
+    logp::util::sleep_forever();
 }
 
 }}

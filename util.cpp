@@ -7,6 +7,8 @@
 #include <pwd.h>
 
 #include <stdexcept>
+#include <thread>
+#include <chrono>
 
 
 namespace logp { namespace util {
@@ -59,6 +61,15 @@ std::string colour_red(std::string s) {
 std::string colour_green(std::string s) {
     if (use_ansi_colours) return std::string("\033[0;32m") + s + std::string("\033[0m");
     return s;
+}
+
+
+void sleep_seconds(int seconds) {
+    std::this_thread::sleep_for(std::chrono::seconds(seconds));
+}
+
+void sleep_forever() {
+    std::this_thread::sleep_until(std::chrono::time_point<std::chrono::system_clock>::max());
 }
 
 

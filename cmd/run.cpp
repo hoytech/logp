@@ -17,6 +17,7 @@
 #include "logp/websocket.h"
 #include "logp/signalwatcher.h"
 #include "logp/print.h"
+#include "logp/util.h"
 
 
 namespace logp { namespace cmd {
@@ -112,7 +113,7 @@ void run::execute() {
         if (!kill_timeout_normal_shutdown) PRINT_WARNING << "attempting to communicate with log periodic server, please wait...";
 
         kill_timeout_thread = std::thread([](){
-            sleep(4);
+            logp::util::sleep_seconds(4);
             PRINT_ERROR << "was unable to communicate with log periodic server";
             exit(1);
         });

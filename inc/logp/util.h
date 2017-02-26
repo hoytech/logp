@@ -16,4 +16,7 @@ std::string colour_green(std::string s);
 
 extern bool use_ansi_colours;
 
+void sleep_seconds(int seconds);
+void sleep_forever();
+
 }}
