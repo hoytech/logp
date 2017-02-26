@@ -147,13 +147,13 @@ void ping::execute() {
 
             std::cout << "Connection info:\n";
             std::cout << "  Established in: " << format_ms(ini_end-ini_start) << "ms\n";
-            std::cout << "  Protocol:       " << prot << "\n";
-            std::cout << "  Remote time:    " << format_time(time) << "\n";
+            std::cout << "  Logp Protocol:  " << prot << "\n";
+            std::cout << "  Remote clock:   " << format_time(time) << "\n";
             std::cout << std::endl;
 
             uint64_t perm = r["perm"];
 
-            std::cout << "Access:\n";
+            std::cout << "Access permissions:\n";
             if (perm == 0) {
                 std::cout << logp::util::colour_red("  Permissions: NONE (exiting)\n");
                 exit(1);
