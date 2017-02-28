@@ -33,8 +33,9 @@ void usage() {
     std::cerr << logp_global_usage_string <<
         "Usage: logp [global options] <command> [command options]\n\n"
         "  Commands:\n"
-        "    run   Execute the given command, upload information\n"
-        "    ps    See what is currently running, history, follow new runs\n"
+        "    run    Execute the given command, upload information\n"
+        "    ping   Test your apikey works, check latency to LP servers\n"
+        "    ps     See what is currently running, history, follow new runs\n"
         << std::endl;
     exit(1);
 }
