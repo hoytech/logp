@@ -227,7 +227,11 @@ void connection::setup() {
         if (!ctx) throw_ssl_exception("unable to create context");
 
         if (!parent_worker->tls_no_verify) {
+#ifdef SSL_PIN_CAFILE
+            if (SSL_CTX_load_verify_locations(ctx, "/usr/logp/ssl/letsencrypt.pem", nullptr) != 1) throw_ssl_exception("unable to load pinned verify locations");
+#else
             if (SSL_CTX_set_default_verify_paths(ctx) != 1) throw_ssl_exception("unable to set default verify paths");
+#endif
             SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
             SSL_CTX_set_verify_depth(ctx, 4);
         }
