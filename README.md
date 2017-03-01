@@ -5,13 +5,37 @@ Log Periodic is a real-time event logging system. You can learn more at [logperi
 This is the source code for the command-line interface to Log Periodic. See our [https://logperiodic.com/docs#logp-command-line](command-line documentation) for more details.
 
 
+## Pre-built binaries
+
+We've pre-built binaries for 64-bit debian and redhat based systems. Please see [our documentation](https://logperiodic.com/docs#installation) for details.
+
+Note that our pre-built binaries bundle a copy of OpenSSL which is not ideal. This is one reason you may wish to compile yourself. If so, keep reading...
+
+
 ## Compilation
 
-On Debian/Ubuntu systems:
+First clone the git repo and change into the created directory:
 
-    sudo apt-get install build-essential g++ perl libssl-dev
+    git clone https://github.com/hoytech/logp.git
+    cd logp
+
+Initialize the submodules:
+
     git submodule update --init
+
+You will need a (recent) C++ compiler and a few other odds and ends. On Debian/Ubuntu systems:
+
+    sudo apt-get install build-essential g++ perl libssl-dev cmake
+
+On RedHat/CentOS/Amazon Linux systems:
+
+    sudo yum install -y gcc-c++ perl openssl-devel cmake
+
+Next, run make (using 4 processes speeds it up a bit):
+
     make -j 4
+
+If all goes well, your binary will be called `logp`. If all does not go well, please [file a github issue](https://github.com/hoytech/logp/issues/new) and don't forget to include the full error message and your OS/compiler types and versions.
 
 
 ## Configuration
