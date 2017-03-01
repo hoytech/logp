@@ -25,7 +25,7 @@ Initialize the submodules:
 
 You will need a (recent) C++ compiler and a few other odds and ends. On Debian/Ubuntu systems:
 
-    sudo apt-get install build-essential g++ perl libssl-dev cmake
+    sudo apt-get install -y build-essential g++ perl libssl-dev cmake
 
 On RedHat/CentOS/Amazon Linux systems:
 
