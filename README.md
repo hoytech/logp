@@ -2,7 +2,7 @@
 
 Log Periodic is a real-time event logging system. You can learn more at [logperiodic.com](https://logperiodic.com).
 
-This is the source code for the command-line interface to Log Periodic. See our [https://logperiodic.com/docs#logp-command-line](command-line documentation) for more details.
+This is the source code for the command-line interface to Log Periodic. See our [command-line documentation](https://logperiodic.com/docs#logp-command-line) for more details.
 
 
 ## Pre-built binaries
