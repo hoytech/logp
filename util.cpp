@@ -54,12 +54,12 @@ std::string colour_bold(std::string s) {
 }
 
 std::string colour_red(std::string s) {
-    if (use_ansi_colours) return std::string("\033[0;31m") + s + std::string("\033[0m");
+    if (use_ansi_colours) return std::string("\033[0;31;1m") + s + std::string("\033[0m");
     return s;
 }
 
 std::string colour_green(std::string s) {
-    if (use_ansi_colours) return std::string("\033[0;32m") + s + std::string("\033[0m");
+    if (use_ansi_colours) return std::string("\033[0;32;1m") + s + std::string("\033[0m");
     return s;
 }
 

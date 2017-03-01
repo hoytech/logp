@@ -31,7 +31,15 @@ const char *logp_global_usage_string =
 
 void usage() {
     std::cerr << logp_global_usage_string <<
-        "Usage: logp [global options] <command> [command options]\n\n"
+        "Usage: logp [global options] <command> [command options]\n"
+        "\n"
+        "  Global options:\n"
+        "    --config [file]   Use specificed config file\n"
+        "    --verbose/-v      More diagnostic messages on stderr\n"
+        "    --quiet/-q        Fewer diagnostic messages on stderr\n"
+        "    --version         Print logp version and exit\n"
+        "    --help            The message you are reading now\n"
+        "\n"
         "  Commands:\n"
         "    run    Execute the given command, upload information\n"
         "    ping   Test your apikey works, check latency to LP servers\n"
@@ -107,7 +115,7 @@ int main(int argc, char **argv) {
         std::string file = logp::util::get_home_dir();
 
         if (file.size()) {
-            file += "/.logp";
+            file += "/.logp.conf";
             config_loaded = logp::load_config_file(file, conf);
         } else {
             // unable to determine home directory
