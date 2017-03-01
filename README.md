@@ -7,9 +7,9 @@ This is the source code for the command-line interface to Log Periodic. See our 
 
 ## Pre-built binaries
 
-We've pre-built binaries for 64-bit debian and redhat based systems. Please see [our documentation](https://logperiodic.com/docs#installation) for details.
+We have pre-built binaries for 64-bit Debian and RedHat based systems. Please see [our official website](https://logperiodic.com/docs#installation) for details.
 
-Note that our pre-built binaries bundle a copy of OpenSSL which is not ideal. This is one reason you may wish to compile yourself. If so, keep reading...
+Note that our pre-built binaries bundle a copy of OpenSSL so that they are as portable as possible. This is not ideal and is one reason you may wish to compile yourself. If so, keep reading...
 
 
 ## Compilation
@@ -40,7 +40,7 @@ If all goes well, your binary will be called `logp`. If all does not go well, pl
 
 ## Configuration
 
-In order to use the `logp` client, you first need to get an API key from the Log Periodic dashboard. Then you should put the following config in `~/.logp` or `/etc/logp.conf` (replacing with your own API key of course):
+In order to use the `logp` client, you first need to get an API key from the Log Periodic dashboard. Then you should put the following config in `~/.logp.conf` or `/etc/logp.conf` (replacing with your own API key of course):
 
     apikey: zrwoszvidAGW09sfiCr3Ii-YIvyeW1oxEMv8lKgyJVhW3
 
@@ -72,7 +72,7 @@ Or follow a tail of job activity with `logp ps -f`:
 
 ## Contact
 
-For help, please don't hesitate to [contact us](https://logperiodic.com/contact)!
+For help, please don't hesitate to [contact us](https://logperiodic.com/contact).
 
 Questions/bug reports/feature requests? [File an issue](https://github.com/hoytech/logp/issues/new)!
 
