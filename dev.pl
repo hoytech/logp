@@ -9,10 +9,11 @@ use LogPeriodic::BuildLib;
 my $cmd = shift || die "need command";
 
 if ($cmd eq 'dist-linux') {
+  my $version = LogPeriodic::BuildLib::get_version('logp');
+  ok_to_release($version);
+
   sys(q{make clean});
   sys(q{make -j 4 LDFLAGS="-Wl,-rpath=/usr/logp/lib/ -static-libgcc -static-libstdc++ -s" XCXXFLAGS="-DSSL_PIN_CAFILE"});
-
-  my $version = LogPeriodic::BuildLib::get_version('logp');
 
   LogPeriodic::BuildLib::fpm({
     types => [qw/ deb rpm /],
@@ -32,4 +33,18 @@ if ($cmd eq 'dist-linux') {
   });
 } else {
   die "unknown command: $cmd";
+}
+
+
+
+sub ok_to_release {
+  my $version = shift;
+
+  if (length(`git diff`)) {
+    die "won't release from tree with uncomitted changes";
+  }
+
+  if ($version =~ /-/) {
+    die "won't release untagged version: $version";
+  }
 }
