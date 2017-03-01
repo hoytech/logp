@@ -74,7 +74,7 @@ Or follow a tail of job activity with `logp ps -f`:
 
 For help, please don't hesitate to [contact us](https://logperiodic.com/contact)!
 
-Questions/bug reports/feature requests are also welcome on the [logp github repo](https://github.com/hoytech/logp/issues).
+Questions/bug reports/feature requests? [File an issue](https://github.com/hoytech/logp/issues/new)!
 
 
 ## License
