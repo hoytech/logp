@@ -10,7 +10,6 @@
 
 #include "logp/cmd/ps.h"
 #include "logp/websocket.h"
-#include "logp/print.h"
 #include "logp/util.h"
 
 

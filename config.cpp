@@ -5,7 +5,7 @@
 #include "yaml-cpp/yaml.h"
 
 #include "logp/config.h"
-#include "logp/print.h"
+#include "logp/util.h"
 
 
 namespace logp {

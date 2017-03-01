@@ -8,7 +8,6 @@
 #include "logp/websocket.h"
 #include "logp/config.h"
 #include "logp/util.h"
-#include "logp/print.h"
 
 #include "logp/cmd/base.h"
 #include "logp/cmd/run.h"
@@ -43,7 +42,7 @@ void usage() {
         "  Commands:\n"
         "    run    Execute the given command, upload information\n"
         "    ping   Test your apikey works, check latency to LP servers\n"
-        "    ps     See what is currently running, history, follow new runs\n"
+        "    ps     See what is currently running, follow new runs\n"
         << std::endl;
     exit(1);
 }

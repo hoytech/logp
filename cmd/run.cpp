@@ -16,7 +16,6 @@
 #include "logp/cmd/run.h"
 #include "logp/websocket.h"
 #include "logp/signalwatcher.h"
-#include "logp/print.h"
 #include "logp/util.h"
 
 
