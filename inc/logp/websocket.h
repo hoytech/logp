@@ -16,12 +16,25 @@
 
 #include "websocketpp/config/core.hpp"
 #include "websocketpp/client.hpp"
+#include <websocketpp/extensions/permessage_deflate/enabled.hpp>
 #include "websocketpp/uri.hpp"
 #include "protected_queue/protected_queue.h"
 
 
+
+
+
+
 namespace logp { namespace websocket {
 
+
+
+struct my_websocketpp_config : public websocketpp::config::core {
+    struct permessage_deflate_config {};
+
+    typedef websocketpp::extensions::permessage_deflate::enabled
+        <permessage_deflate_config> permessage_deflate_type;
+};
 
 
 
@@ -91,8 +104,8 @@ class connection {
     bool want_write();
     bool want_read();
 
-    websocketpp::client<websocketpp::config::core> wspp_client;
-    websocketpp::client<websocketpp::config::core>::connection_ptr wspp_conn;
+    websocketpp::client<my_websocketpp_config> wspp_client;
+    websocketpp::client<my_websocketpp_config>::connection_ptr wspp_conn;
     int connection_fd = -1;
 
   private:

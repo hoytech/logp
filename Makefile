@@ -30,7 +30,7 @@ _buildinfo.h: .git/refs/heads/master
 	perl -e '$$v = `git describe --tags --match "logp-*"`; $$v =~ s/^logp-|\s*$$//g; print qq{#define LOGP_VERSION "$$v"\n}' > _buildinfo.h
 
 logp: $(PROGOBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROGOBJS) -lssl -lcrypto -lpthread -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROGOBJS) -lz -lssl -lcrypto -lpthread -o $@
 
 %.o: %.cpp inc/logp/*.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
