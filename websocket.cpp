@@ -83,7 +83,7 @@ std::string worker::prepare_new_request(request &r, uint64_t request_id) {
                                 std::forward_as_tuple(std::move(r)));
     }
 
-    return std::move(initial_message);
+    return initial_message;
 }
 
 std::string worker::render_request(request &r) {
@@ -94,7 +94,7 @@ std::string worker::render_request(request &r) {
     full_msg += "\n";
     full_msg += r.render_body();
 
-    return std::move(full_msg);
+    return full_msg;
 }
 
 
