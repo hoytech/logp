@@ -40,6 +40,8 @@ if ($cmd eq 'dist-linux') {
 sub ok_to_release {
   my $version = shift;
 
+  return if $ENV{FORCE_RELEASE};
+
   if (length(`git diff`)) {
     die "won't release from tree with uncomitted changes";
   }
