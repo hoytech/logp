@@ -2,8 +2,7 @@
 #include <errno.h>
 #include <signal.h>
 
-#include <stdexcept>
-
+#include "logp/util.h"
 #include "logp/signalwatcher.h"
 
 
@@ -32,7 +31,7 @@ void signal_watcher::unblock() {
 void signal_watcher::run() {
     int s = pthread_sigmask(SIG_BLOCK, &set, NULL);
     if (s != 0) {
-        throw std::runtime_error(std::string("unable to call pthread_sigmask: ") + strerror(errno));
+        throw logp::error("unable to call pthread_sigmask: ", strerror(errno));
     }
 
     t = std::thread([this]() {
@@ -40,7 +39,7 @@ void signal_watcher::run() {
             int signum;
             int ret = sigwait(&set, &signum);
             if (ret != 0) {
-                throw std::runtime_error(std::string("failure calling sigwait: ") + strerror(errno));
+                throw logp::error("failure calling sigwait: ", strerror(errno));
             }
 
             auto &cb = cbs.at(signum);

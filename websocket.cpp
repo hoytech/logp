@@ -35,7 +35,7 @@ std::string request::render_body() {
 
 void worker::setup() {
     size_t dash_pos = ::conf.apikey.find('-');
-    if (dash_pos == std::string::npos) throw std::runtime_error(std::string("unable to find - in apikey"));
+    if (dash_pos == std::string::npos) throw logp::error("unable to find - in apikey");
 
     std::string env_id = ::conf.apikey.substr(0, dash_pos);
     token = ::conf.apikey.substr(dash_pos + 1);
@@ -49,7 +49,7 @@ void worker::setup() {
     if (::conf.tls_no_verify) tls_no_verify = true;
 
     int rc = pipe(activity_pipe);
-    if (rc) throw std::runtime_error(std::string("unable to create pipe: ") + strerror(errno));
+    if (rc) throw logp::error("unable to create pipe: ", strerror(errno));
 
     logp::util::make_fd_nonblocking(activity_pipe[0]);
     logp::util::make_fd_nonblocking(activity_pipe[1]);
@@ -157,7 +157,7 @@ void worker::run_event_loop() {
 
             ssize_t ret = read(activity_pipe[0], junk, 1);
             if (ret != 1 && (errno != EAGAIN || errno != EINTR)) {
-                throw std::runtime_error(std::string("error reading from triggering pipe: ") + strerror(errno));
+                throw logp::error("error reading from triggering pipe: ", strerror(errno));
             }
 
             auto temp_queue = new_requests_queue.pop_all_no_wait();
@@ -185,7 +185,7 @@ void worker::trigger_activity_pipe() {
     if (ret != 1) {
         if (errno == EINTR) goto again;
         if (errno == EAGAIN) return;
-        throw std::runtime_error(std::string("unable to write to triggering pipe: ") + strerror(errno));
+        throw logp::error("unable to write to triggering pipe: ", strerror(errno));
     }
 }
 
@@ -205,7 +205,7 @@ void init_openssl_library() {
 
 
 static void throw_ssl_exception(std::string msg) {
-    throw std::runtime_error(std::string("OpenSSL error ") + msg + ": (" + std::string(ERR_error_string(ERR_get_error(), nullptr)) + ")");
+    throw logp::error("OpenSSL error ", msg, ": (", ERR_error_string(ERR_get_error(), nullptr), ")");
 }
 
 
@@ -287,21 +287,13 @@ void connection::setup() {
     wspp_client.set_close_handler([this](websocketpp::connection_hdl hdl){
         auto con = wspp_client.get_con_from_hdl(hdl);
 
-        std::string err = "websocket connection closed (";
-        err += con->get_ec().message();
-        err += ")";
-
-        throw std::runtime_error(err);
+        throw logp::error("websocket connection closed (", con->get_ec().message(), ")");
     });
 
     wspp_client.set_fail_handler([this](websocketpp::connection_hdl hdl){
         auto con = wspp_client.get_con_from_hdl(hdl);
 
-        std::string err = "websocket handshake failure (";
-        err += con->get_ec().message();
-        err += ")";
-
-        throw std::runtime_error(err);
+        throw logp::error("websocket handshake failure (", con->get_ec().message(), ")");
     });
 
     wspp_client.set_message_handler([this](websocketpp::connection_hdl, websocketpp::client<websocketpp::config::core>::message_ptr msg) {
@@ -319,7 +311,7 @@ void connection::setup() {
 
             if (json.count("id")) {
                 request_id = json["id"];
-                if (request_id == 0) throw std::runtime_error("unexpected request_id of 0");
+                if (request_id == 0) throw logp::error("unexpected request_id of 0");
             }
 
             if (json.count("fin")) fin = json["fin"];
@@ -448,7 +440,7 @@ void connection::drain_pending_messages() {
             wspp_client.send(wspp_conn, msg, websocketpp::frame::opcode::text);
         }
     } catch (const websocketpp::lib::error_code& e) {
-        throw std::runtime_error(std::string("error sending to websocket: ") + e.message());
+        throw logp::error("error sending to websocket: ", e.message());
     };
 
     pending_messages.clear();
@@ -492,7 +484,7 @@ void connection::open_socket(websocketpp::uri &uri) {
     if (res) freeaddrinfo(res);
     if (fd != -1) close(fd);
 
-    throw std::runtime_error(err);
+    throw logp::error(err);
 }
 
 
@@ -535,10 +527,10 @@ void connection::attempt_write() {
                 tls_want_write = true;
                 return;
             } else {
-                throw std::runtime_error(std::string("tls error"));
+                throw logp::error("tls error");
             }
         } else if (ret == 0) {
-            throw std::runtime_error(std::string("socket closed"));
+            throw logp::error("socket closed");
         }
 
         bytes_written = ret;
@@ -547,9 +539,9 @@ void connection::attempt_write() {
 
         if (ret == -1) {
             if (errno == EAGAIN || errno == EINTR) return;
-            throw std::runtime_error(std::string("error writing to socket: ") + strerror(errno));
+            throw logp::error("error writing to socket: ", strerror(errno));
         } else if (ret == 0) {
-            throw std::runtime_error(std::string("socket closed"));
+            throw logp::error("socket closed");
         }
 
         bytes_written = ret;
@@ -579,10 +571,10 @@ void connection::attempt_read() {
                 tls_want_write = true;
                 return;
             } else {
-                throw std::runtime_error(std::string("tls error"));
+                throw logp::error("tls error");
             }
         } else if (ret == 0) {
-            throw std::runtime_error(std::string("socket closed"));
+            throw logp::error("socket closed");
         }
 
         bytes_read = ret;
@@ -591,9 +583,9 @@ void connection::attempt_read() {
 
         if (ret == -1) {
             if (errno == EAGAIN || errno == EINTR) return;
-            throw std::runtime_error(std::string("error reading from socket: ") + strerror(errno));
+            throw logp::error("error reading from socket: ", strerror(errno));
         } else if (ret == 0) {
-            throw std::runtime_error(std::string("socket closed"));
+            throw logp::error("socket closed");
         }
 
         bytes_read = ret;

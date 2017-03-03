@@ -4,7 +4,6 @@
 
 #include <iostream>
 #include <string>
-#include <exception>
 
 #include "nlohmann/json.hpp"
 
@@ -135,7 +134,7 @@ static std::string render_time(uint64_t time_us) {
     time_t time_s = time_us / 1000000;
 
     struct tm timeres;
-    if (!localtime_r(&time_s, &timeres)) throw std::runtime_error(std::string("error parsing time"));
+    if (!localtime_r(&time_s, &timeres)) throw logp::error("error parsing time");
 
     char buf[100];
     strftime(buf, sizeof(buf), "%b%d %H:%M:%S", &timeres);

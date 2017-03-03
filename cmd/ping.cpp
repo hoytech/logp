@@ -5,7 +5,6 @@
 
 #include <iostream>
 #include <string>
-#include <exception>
 
 #include "nlohmann/json.hpp"
 
@@ -42,7 +41,7 @@ void ping::process_option(int arg, int, char *optarg) {
       case 'c':
         {
             long c = atol(optarg);
-            if (c <= 0) throw std::runtime_error("bad value for count");
+            if (c <= 0) throw logp::error("bad value for count");
             count = c;
         }
         break;
