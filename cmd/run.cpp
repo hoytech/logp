@@ -84,6 +84,8 @@ void run::execute() {
     hoytech::protected_queue<run_msg> cmd_run_queue;
 
 
+    signal(SIGCHLD, [](int){});
+
     logp::signal_watcher sigwatcher;
 
     sigwatcher.subscribe(SIGCHLD, [&](){
