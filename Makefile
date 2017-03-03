@@ -3,7 +3,7 @@ OPT      = -O2 -g
 STD      = -std=c++11
 INC      = -Iinc -Iinc/websocketpp
 CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
-LDFLAGS  = $(XCXXFLAGS)
+LDFLAGS  = $(XLDFLAGS)
 
 PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o cmd/base.o cmd/run.o cmd/ps.o cmd/ping.o
 
