@@ -23,6 +23,8 @@ Initialize the submodules:
 
     git submodule update --init
 
+### Linux-specific
+
 You will need a (recent) C++ compiler and a few other odds and ends. On Debian/Ubuntu systems:
 
     sudo apt-get install -y build-essential g++ perl libssl-dev
@@ -34,6 +36,20 @@ On RedHat/CentOS/Amazon Linux systems:
 Next, run make (using 4 processes speeds it up a bit):
 
     make -j 4
+
+### Mac OS-specific
+
+You will need [homebrew](https://brew.sh/) installed.
+
+First, grab an up-to-date openssl since the version Mac OS ships with is very old:
+
+    brew install openssl
+
+Next compile like so:
+
+    make XCXXFLAGS=-I/usr/local/opt/openssl/include XLDFLAGS=-L/usr/local/opt/openssl/lib -j 4
+
+### Problems?
 
 If all goes well, your binary will be called `logp`. If all does not go well, please [file a github issue](https://github.com/hoytech/logp/issues/new) and don't forget to include the full error message and your OS/compiler types and versions.
 
