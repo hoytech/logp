@@ -25,11 +25,11 @@ Initialize the submodules:
 
 You will need a (recent) C++ compiler and a few other odds and ends. On Debian/Ubuntu systems:
 
-    sudo apt-get install -y build-essential g++ perl libssl-dev cmake
+    sudo apt-get install -y build-essential g++ perl libssl-dev
 
 On RedHat/CentOS/Amazon Linux systems:
 
-    sudo yum install -y gcc-c++ perl openssl-devel cmake
+    sudo yum install -y gcc-c++ perl openssl-devel
 
 Next, run make (using 4 processes speeds it up a bit):
 
