@@ -3,7 +3,7 @@ OPT      = -O2 -g
 STD      = -std=c++11
 INC      = -Iinc -Iinc/websocketpp
 CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
-LDFLAGS  =
+LDFLAGS  = $(XCXXFLAGS)
 
 PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o cmd/base.o cmd/run.o cmd/ps.o cmd/ping.o
 
@@ -30,7 +30,7 @@ _buildinfo.h: .git/refs/heads/master
 	perl -e '$$v = `git describe --tags --match "logp-*"`; $$v =~ s/^logp-|\s*$$//g; print qq{#define LOGP_VERSION "$$v"\n}' > _buildinfo.h
 
 logp: $(PROGOBJS)
-	$(CXX) $(CXXFLAGS) -L. $(LDFLAGS) $(PROGOBJS) -lssl -lcrypto -lpthread -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROGOBJS) -lssl -lcrypto -lpthread -o $@
 
 %.o: %.cpp inc/logp/*.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@

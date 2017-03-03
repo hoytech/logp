@@ -6,9 +6,13 @@
 #include <sys/time.h>
 #include <pwd.h>
 
+#include <cstdlib>
 #include <stdexcept>
 #include <thread>
 #include <chrono>
+#include <string>
+
+#include "logp/util.h"
 
 
 namespace logp { namespace util {
@@ -26,7 +30,7 @@ void make_fd_nonblocking(int fd) {
 }
 
 std::string get_home_dir() {
-    char *home_dir = getenv("HOME");
+    char *home_dir = std::getenv("HOME");
 
     if (home_dir) return std::string(home_dir);
 

@@ -5,6 +5,7 @@
 #include <functional>
 #include <thread>
 #include <unordered_map>
+#include <string>
 
 
 namespace logp {
