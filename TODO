@@ -1,7 +1,6 @@
 ! unify config file and top-level command-line options: need to parse config file first, then apply options
 ! save entries to local DB so can be uploaded later
-* mac os support
-* colour error output like "logp: error: Expected a command,"
+* says "unable to communicate with server" if the process won't die
 * gather stdout/stderr -- rate limit their upload
 * configurable timeouts
 * send version info to eventstore
