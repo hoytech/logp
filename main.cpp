@@ -127,12 +127,12 @@ int main(int argc, char **argv) {
     // Verify necessary settings
 
     if (!conf.endpoint.size()) {
-        PRINT_ERROR << "No 'endpoint' option specified";
+        PRINT_ERROR << "No 'endpoint' parameter found in config file";
         usage();
     }
 
     if (!conf.apikey.size()) {
-        PRINT_ERROR << "No 'apikey' option specified";
+        PRINT_ERROR << "No 'apikey' parameter found in config file";
         usage();
     }
 
