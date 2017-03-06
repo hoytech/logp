@@ -17,6 +17,9 @@
 #include "logp/util.h"
 
 
+#ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
+#  error "OpenSSL 1.0.2+ required for X509_check_host() (see https://github.com/hoytech/logp/issues/1)"
+#endif
 
 
 namespace logp { namespace websocket {
