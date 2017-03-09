@@ -16,9 +16,9 @@
 
 #include "websocketpp/config/core.hpp"
 #include "websocketpp/client.hpp"
-#include <websocketpp/extensions/permessage_deflate/enabled.hpp>
+#include "websocketpp/extensions/permessage_deflate/enabled.hpp"
 #include "websocketpp/uri.hpp"
-#include "protected_queue/protected_queue.h"
+#include "hoytech/protected_queue.h"
 
 
 
