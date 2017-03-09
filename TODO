@@ -1,11 +1,13 @@
 ! unify config file and top-level command-line options: need to parse config file first, then apply options
 ! save entries to local DB so can be uploaded later
+! gather stderr/stdout
+  ! rate limit their upload
+  * tail/cat
+
 * says "unable to communicate with server" if the process won't die
-* gather stdout/stderr -- rate limit their upload
 * configurable timeouts
-* send version info to eventstore
-* tail/cat stdout/stderr
-* way to manually terminate an event
-  ? kill
+* send logp version info to eventstore
+* config file examples
+
 ? tags
 ? windows support
