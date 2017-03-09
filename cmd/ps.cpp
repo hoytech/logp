@@ -234,13 +234,15 @@ void process_follow(nlohmann::json &res) {
         auto &rec = find_res->second;
 
         std::string exit_reason;
-        if (res["da"].count("exit")) {
+        if (res["da"]["term"] == "exit" && res["da"].count("exit")) {
             uint64_t exit_code = res["da"]["exit"];
             if (exit_code) exit_reason = logp::util::colour_red(std::string("✗")) + std::string(" exit code ") + std::to_string(exit_code);
             else exit_reason = logp::util::colour_green(std::string("✓"));
-        } else if (res["da"].count("signal")) {
+        } else if (res["da"]["term"] == "signal" && res["da"].count("signal")) {
             std::string sig = res["da"]["signal"];
             exit_reason = logp::util::colour_red(std::string("✗")) + std::string(" killed by ") + sig;
+        } else if (res["da"]["term"] == "timeout") {
+            exit_reason = logp::util::colour_red(std::string("✗")) + std::string(" heartbeat timeout");
         } else {
             exit_reason = "?";
         }
