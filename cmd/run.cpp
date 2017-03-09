@@ -220,7 +220,7 @@ void run::execute() {
     bool sent_end_message = false;
     int wait_status = 0;
 
-    timer.repeat_maybe(::conf.heartbeat_interval * 1000000, [&]{
+    timer.repeat_maybe(::conf.heartbeat_interval, [&]{
         if (pid_exited) return false;
         if (!have_event_id) return true;
 
