@@ -12,6 +12,7 @@
 #include <thread>
 
 #include "nlohmann/json.hpp"
+#include "hoytech/timer.h"
 
 #include "logp/cmd/run.h"
 #include "logp/websocket.h"
@@ -103,18 +104,18 @@ void run::execute() {
         }
     });
 
-    std::thread kill_timeout_thread;
+    hoytech::timer timer;
+
     bool kill_timeout_normal_shutdown = false;
-    bool kill_timeout_thread_started = false;
+    bool kill_timeout_timer_started = false;
 
     auto kill_signal_handler = [&](){
-        if (kill_timeout_thread_started) return;
-        kill_timeout_thread_started = true;
+        if (kill_timeout_timer_started) return;
+        kill_timeout_timer_started = true;
 
         if (!kill_timeout_normal_shutdown) PRINT_WARNING << "attempting to communicate with log periodic server, please wait...";
 
-        kill_timeout_thread = std::thread([](){
-            logp::util::sleep_seconds(4);
+        timer.once(4*1000000, []{
             PRINT_ERROR << "was unable to communicate with log periodic server";
             exit(1);
         });
@@ -126,6 +127,8 @@ void run::execute() {
     sigwatcher.subscribe(SIGTERM, kill_signal_handler);
 
     sigwatcher.run();
+
+    timer.run();
 
 
     logp::websocket::worker ws_worker;
@@ -197,7 +200,7 @@ void run::execute() {
             logp::websocket::request r;
 
             r.op = "add";
-            r.body = {{ "st", start_timestamp }, { "da", data }};
+            r.body = {{ "st", start_timestamp }, { "da", data }, { "hb", ::conf.heartbeat_interval }};
             r.on_data = [&](nlohmann::json &resp) {
                 run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
                 m.response = resp;
@@ -216,6 +219,20 @@ void run::execute() {
     uint64_t event_id = 0;
     bool sent_end_message = false;
     int wait_status = 0;
+
+    timer.repeat_maybe(::conf.heartbeat_interval * 1000000, [&]{
+        if (pid_exited) return false;
+        if (!have_event_id) return true;
+
+        logp::websocket::request r;
+
+        r.op = "hrt";
+        r.body = {{ "ev", event_id }};
+
+        ws_worker.push_move_new_request(r);
+
+        return true;
+    });
 
     while (1) {
         run_msg m = cmd_run_queue.pop();

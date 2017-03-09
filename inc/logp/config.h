@@ -11,6 +11,7 @@ struct config {
     std::string apikey;
     bool tls_no_verify = false;
     int verbosity = 0;
+    int heartbeat_interval = 5;
 };
 
 

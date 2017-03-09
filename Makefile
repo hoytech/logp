@@ -21,7 +21,7 @@ endif
 all: logp
 
 clean:
-	rm -f *.o cmd/*.o *.so logp _buildinfo.h
+	rm -f *.o cmd/*.o hoytech-cpp/*.o *.so logp _buildinfo.h
 
 realclean: clean
 	rm -rf dist
