@@ -1,10 +1,11 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/types.h>
 #include <pwd.h>
+#include <sys/types.h>
 #include <sys/time.h>
 #include <sys/wait.h>
+#include <sys/resource.h>
 
 #include <iostream>
 #include <string>
@@ -69,6 +70,8 @@ class run_msg {
     int pid = 0;
     int wait_status = 0;
     uint64_t timestamp = 0;
+    struct rusage resource_usage;
+
 
     // WEBSOCKET_RESPONSE
     nlohmann::json response;
@@ -94,12 +97,14 @@ void run::execute() {
         gettimeofday(&tv, nullptr);
 
         int status;
-        pid_t pid = waitpid(-1, &status, WNOHANG);
+        struct rusage resource_usage;
+        pid_t pid = wait4(-1, &status, WNOHANG, &resource_usage);
         if (pid > 0) {
             run_msg m(run_msg_type::PROCESS_EXITED);
             m.pid = pid;
             m.wait_status = status;
             m.timestamp = (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+            m.resource_usage = resource_usage;
             cmd_run_queue.push_move(m);
         }
     });
@@ -249,6 +254,8 @@ void run::execute() {
                      : "other")
                     << ")"
                 ;
+
+                PRINT_DEBUG << "Minor page faults: " << m.resource_usage.ru_minflt;
 
                 kill_timeout_normal_shutdown = true;
                 kill_signal_handler();
