@@ -43,10 +43,10 @@ sub ok_to_release {
   return if $ENV{FORCE_RELEASE};
 
   if (length(`git diff`)) {
-    die "won't release from tree with uncomitted changes";
+    die "won't release from tree with uncomitted changes (override with FORCE_RELEASE env var)";
   }
 
   if ($version =~ /-/) {
-    die "won't release untagged version: $version";
+    die "won't release untagged version: $version (override with FORCE_RELEASE env var)";
   }
 }
