@@ -1,0 +1,9 @@
+0.1.2  2017-03-10
+  * Mac OS X support
+  * Remove libyaml dependency
+  * Enable websocket compression
+  * Heartbeat support
+  * Upload resource usage statistics
+
+0.1.1  2017-03-01
+  * Initial release!
