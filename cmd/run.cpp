@@ -302,9 +302,15 @@ void run::execute() {
                     data["term"] = "unknown";
                 }
 
+                long ru_maxrss = resource_usage.ru_maxrss;
+
+#ifdef __APPLE__
+                ru_maxrss /= 1024; // In bytes on OS X
+#endif
+
                 data["rusage"]["utime"] = logp::util::timeval_to_usecs(resource_usage.ru_utime);
                 data["rusage"]["stime"] = logp::util::timeval_to_usecs(resource_usage.ru_stime);
-                data["rusage"]["maxrss"] = resource_usage.ru_maxrss;
+                data["rusage"]["maxrss"] = ru_maxrss;
                 data["rusage"]["minflt"] = resource_usage.ru_minflt;
                 data["rusage"]["majflt"] = resource_usage.ru_majflt;
                 data["rusage"]["inblock"] = resource_usage.ru_inblock;
