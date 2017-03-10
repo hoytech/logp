@@ -205,7 +205,7 @@ void run::execute() {
             logp::websocket::request r;
 
             r.op = "add";
-            r.body = {{ "st", start_timestamp }, { "da", data }, { "hb", ::conf.heartbeat_interval }};
+            r.body = {{ "ty", "cmd" }, { "st", start_timestamp }, { "da", data }, { "hb", ::conf.heartbeat_interval }};
             r.on_data = [&](nlohmann::json &resp) {
                 run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
                 m.response = resp;
@@ -224,6 +224,7 @@ void run::execute() {
     uint64_t event_id = 0;
     bool sent_end_message = false;
     int wait_status = 0;
+    struct rusage resource_usage = {};
 
     timer.repeat_maybe(::conf.heartbeat_interval, [&]{
         if (pid_exited) return false;
@@ -246,6 +247,7 @@ void run::execute() {
             if (m.pid == fork_ret) {
                 end_timestamp = m.timestamp;
                 wait_status = m.wait_status;
+                resource_usage = m.resource_usage;
                 pid_exited = true;
 
                 PRINT_INFO << "Process exited (" <<
@@ -254,8 +256,6 @@ void run::execute() {
                      : "other")
                     << ")"
                 ;
-
-                PRINT_DEBUG << "Minor page faults: " << m.resource_usage.ru_minflt;
 
                 kill_timeout_normal_shutdown = true;
                 kill_signal_handler();
@@ -302,11 +302,21 @@ void run::execute() {
                     data["term"] = "unknown";
                 }
 
+                data["rusage"]["utime"] = logp::util::timeval_to_usecs(resource_usage.ru_utime);
+                data["rusage"]["stime"] = logp::util::timeval_to_usecs(resource_usage.ru_stime);
+                data["rusage"]["maxrss"] = resource_usage.ru_maxrss;
+                data["rusage"]["minflt"] = resource_usage.ru_minflt;
+                data["rusage"]["majflt"] = resource_usage.ru_majflt;
+                data["rusage"]["inblock"] = resource_usage.ru_inblock;
+                data["rusage"]["oublock"] = resource_usage.ru_oublock;
+                data["rusage"]["nvcsw"] = resource_usage.ru_nvcsw;
+                data["rusage"]["nivcsw"] = resource_usage.ru_nivcsw;
+
                 {
                     logp::websocket::request r;
 
                     r.op = "add";
-                    r.body = {{ "ev", event_id }, { "en", end_timestamp }, { "da", data }};
+                    r.body = {{ "ty", "cmd" }, { "ev", event_id }, { "en", end_timestamp }, { "da", data }};
                     r.on_data = [&](nlohmann::json &resp) {
                         run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
                         m.response = resp;

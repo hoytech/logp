@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sys/time.h>
+
 #include <string>
 #include <sstream>
 #include <stdexcept>
@@ -49,6 +51,7 @@ std::string get_home_dir();
 
 uint64_t curr_time();
 
+uint64_t timeval_to_usecs(struct timeval &);
 
 
 
