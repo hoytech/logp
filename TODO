@@ -8,6 +8,12 @@
 * configurable timeouts
 * send logp version info to eventstore
 * config file examples
+* instead of print "<1s" why not print "231ms"?
+* if an event gets timed out due to heartbeat, but logp is still running (perhaps it was stopped) then it
+  can't upload its info and it gets errors like this:
+    logp: warning: error from server for hrt op: not expecting heartbeat for this event id
+    logp: warning: error from server for add op: event already ended
+    logp: error: was unable to communicate with log periodic server
 
 ? tags
 ? windows support
