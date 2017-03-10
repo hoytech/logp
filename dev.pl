@@ -8,12 +8,16 @@ use LogPeriodic::BuildLib;
 
 my $cmd = shift || die "need command";
 
-if ($cmd eq 'dist-linux') {
-  my $version = LogPeriodic::BuildLib::get_version('logp');
-  ok_to_release($version);
+my $version;
 
+if ($cmd =~ /^dist-/) {
+  $version = LogPeriodic::BuildLib::get_version('logp');
+  ok_to_release($version);
+}
+
+if ($cmd eq 'dist-linux') {
   sys(q{make clean});
-  sys(q{make -j 4 LDFLAGS="-Wl,-rpath=/usr/logp/lib/ -static-libgcc -static-libstdc++ -s" XCXXFLAGS="-DSSL_PIN_CAFILE"});
+  sys(q{make -j 4 XCXXFLAGS="-DSSL_PIN_CAFILE" XLDFLAGS="-Wl,-rpath=/usr/logp/lib/ -static-libgcc -static-libstdc++ -s" });
 
   LogPeriodic::BuildLib::fpm({
     types => [qw/ deb rpm /],
@@ -31,6 +35,12 @@ if ($cmd eq 'dist-linux') {
     /],
     description => 'Command-line client for Log Periodic',
   });
+} elsif ($cmd eq 'dist-macos') {
+  sys(q{make clean});
+  ## FIXME: figure out how to pin CAFILE for Mac OS
+  sys(q{ make -j 4 XCXXFLAGS="-I/usr/local/opt/openssl/include" XLDFLAGS="-L/usr/local/opt/openssl/lib" });
+  mkdir('dist');
+  sys(qq{ tar -czf dist/logp-$version.bottle.tar.gz logp });
 } else {
   die "unknown command: $cmd";
 }
