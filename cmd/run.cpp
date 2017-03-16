@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <memory>
 #include <thread>
 
 #include "mapbox/variant.hpp"
@@ -19,6 +20,7 @@
 #include "logp/cmd/run.h"
 #include "logp/websocket.h"
 #include "logp/signalwatcher.h"
+#include "logp/pipecapturer.h"
 #include "logp/util.h"
 
 
@@ -70,7 +72,14 @@ struct run_msg_websocket_response {
     nlohmann::json response;
 };
 
-using run_msg = mapbox::util::variant<run_msg_process_exited, run_msg_websocket_response>;
+struct run_msg_pipe_data {
+    int fd = -1;
+    bool finished = false;
+    uint64_t timestamp = 0;
+    std::string data;
+};
+
+using run_msg = mapbox::util::variant<run_msg_process_exited, run_msg_websocket_response, run_msg_pipe_data>;
 
 
 void run::execute() {
@@ -156,17 +165,43 @@ void run::execute() {
 #endif
     }
 
+
+
+    std::unique_ptr<logp::pipe_capturer> stderr_pipe_capturer;
+    bool stderr_finished = false;
+
+    stderr_pipe_capturer = std::unique_ptr<logp::pipe_capturer>(new logp::pipe_capturer(2, timer,
+        [&](std::string &buf, uint64_t timestamp){
+            run_msg_pipe_data m;
+            m.fd = 2;
+            m.timestamp = timestamp;
+            m.data = std::move(buf);
+            cmd_run_queue.push_move(m);
+        },
+        [&](){
+            run_msg_pipe_data m;
+            m.fd = 2;
+            m.finished = true;
+            cmd_run_queue.push_move(m);
+        }
+    ));
+
+
     pid_t fork_ret = fork();
 
     if (fork_ret == -1) {
         PRINT_ERROR << "unable to fork: " << strerror(errno);
         _exit(1);
     } else if (fork_ret == 0) {
+        if (stderr_pipe_capturer) stderr_pipe_capturer->child();
+
         sigwatcher.unblock();
         execvp(my_argv[optind], my_argv+optind);
         PRINT_ERROR << "Couldn't exec " << my_argv[optind] << " : " << strerror(errno);
         _exit(1);
     }
+
+    if (stderr_pipe_capturer) stderr_pipe_capturer->parent();
 
 
     PRINT_INFO << "Executing " << my_argv[optind] << " (pid " << fork_ret << ")";
@@ -281,52 +316,61 @@ void run::execute() {
                     PRINT_ERROR << "Unable to parse JSON body to confirm end: " << e.what();
                 }
             }
+        },
+        [&](run_msg_pipe_data &m){
+            if (m.fd == 2 && stderr_pipe_capturer) {
+                if (m.data.size()) {
+//std::cerr << "STDERR: [" << m.data << "]" << std::endl;
+                }
+
+                if (m.finished) {
+                    stderr_finished = true;
+                }
+            }
         });
 
-        if (pid_exited && have_event_id && !sent_end_message) {
-            {
-                nlohmann::json data;
+        if (pid_exited && have_event_id && (!stderr_pipe_capturer || stderr_finished) && !sent_end_message) {
+            nlohmann::json data;
 
-                if (WIFEXITED(wait_status)) {
-                    data["term"] = "exit";
-                    data["exit"] = WEXITSTATUS(wait_status);
-                } else if (WIFSIGNALED(wait_status)) {
-                    data["term"] = "signal";
-                    data["signal"] = strsignal(WTERMSIG(wait_status));
-                    if (WCOREDUMP(wait_status)) data["core"] = true;
-                } else {
-                    data["term"] = "unknown";
-                }
+            if (WIFEXITED(wait_status)) {
+                data["term"] = "exit";
+                data["exit"] = WEXITSTATUS(wait_status);
+            } else if (WIFSIGNALED(wait_status)) {
+                data["term"] = "signal";
+                data["signal"] = strsignal(WTERMSIG(wait_status));
+                if (WCOREDUMP(wait_status)) data["core"] = true;
+            } else {
+                data["term"] = "unknown";
+            }
 
-                long ru_maxrss = resource_usage.ru_maxrss;
+            long ru_maxrss = resource_usage.ru_maxrss;
 
 #ifdef __APPLE__
-                ru_maxrss /= 1024; // In bytes on OS X
+            ru_maxrss /= 1024; // In bytes on OS X
 #endif
 
-                data["rusage"]["utime"] = logp::util::timeval_to_usecs(resource_usage.ru_utime);
-                data["rusage"]["stime"] = logp::util::timeval_to_usecs(resource_usage.ru_stime);
-                data["rusage"]["maxrss"] = ru_maxrss;
-                data["rusage"]["minflt"] = resource_usage.ru_minflt;
-                data["rusage"]["majflt"] = resource_usage.ru_majflt;
-                data["rusage"]["inblock"] = resource_usage.ru_inblock;
-                data["rusage"]["oublock"] = resource_usage.ru_oublock;
-                data["rusage"]["nvcsw"] = resource_usage.ru_nvcsw;
-                data["rusage"]["nivcsw"] = resource_usage.ru_nivcsw;
+            data["rusage"]["utime"] = logp::util::timeval_to_usecs(resource_usage.ru_utime);
+            data["rusage"]["stime"] = logp::util::timeval_to_usecs(resource_usage.ru_stime);
+            data["rusage"]["maxrss"] = ru_maxrss;
+            data["rusage"]["minflt"] = resource_usage.ru_minflt;
+            data["rusage"]["majflt"] = resource_usage.ru_majflt;
+            data["rusage"]["inblock"] = resource_usage.ru_inblock;
+            data["rusage"]["oublock"] = resource_usage.ru_oublock;
+            data["rusage"]["nvcsw"] = resource_usage.ru_nvcsw;
+            data["rusage"]["nivcsw"] = resource_usage.ru_nivcsw;
 
-                {
-                    logp::websocket::request r;
+            {
+                logp::websocket::request r;
 
-                    r.op = "add";
-                    r.body = {{ "ty", "cmd" }, { "ev", event_id }, { "en", end_timestamp }, { "da", data }};
-                    r.on_data = [&](nlohmann::json &resp) {
-                        run_msg_websocket_response m;
-                        m.response = resp;
-                        cmd_run_queue.push_move(m);
-                    };
+                r.op = "add";
+                r.body = {{ "ty", "cmd" }, { "ev", event_id }, { "en", end_timestamp }, { "da", data }};
+                r.on_data = [&](nlohmann::json &resp) {
+                    run_msg_websocket_response m;
+                    m.response = resp;
+                    cmd_run_queue.push_move(m);
+                };
 
-                    ws_worker.push_move_new_request(r);
-                }
+                ws_worker.push_move_new_request(r);
             }
 
             sent_end_message = true;
