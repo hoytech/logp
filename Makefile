@@ -1,7 +1,7 @@
 W        = -Wall -Wextra
 OPT      = -O2 -g
 STD      = -std=c++11
-INC      = -Iinc -Ihoytech-cpp -Iinc/websocketpp
+INC      = -Iinc -Ihoytech-cpp -Iinc/websocketpp -Iinc/variant/include
 CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
 LDFLAGS  = $(XLDFLAGS)
 

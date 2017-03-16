@@ -12,6 +12,7 @@
 #include <fstream>
 #include <thread>
 
+#include "mapbox/variant.hpp"
 #include "nlohmann/json.hpp"
 #include "hoytech/timer.h"
 
@@ -58,24 +59,18 @@ void run::process_option(int arg, int option_index, char *) {
 
 
 
-enum class run_msg_type { PROCESS_EXITED, WEBSOCKET_RESPONSE };
-
-class run_msg {
-  public:
-    run_msg(run_msg_type type_) : type(type_) {}
-
-    run_msg_type type;
-
-    // PROCESS_EXITED
+struct run_msg_process_exited {
     int pid = 0;
     int wait_status = 0;
     uint64_t timestamp = 0;
-    struct rusage resource_usage;
+    struct rusage resource_usage = {};
+};
 
-
-    // WEBSOCKET_RESPONSE
+struct run_msg_websocket_response {
     nlohmann::json response;
 };
+
+using run_msg = mapbox::util::variant<run_msg_process_exited, run_msg_websocket_response>;
 
 
 void run::execute() {
@@ -100,7 +95,7 @@ void run::execute() {
         struct rusage resource_usage;
         pid_t pid = wait4(-1, &status, WNOHANG, &resource_usage);
         if (pid > 0) {
-            run_msg m(run_msg_type::PROCESS_EXITED);
+            run_msg_process_exited m;
             m.pid = pid;
             m.wait_status = status;
             m.timestamp = (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
@@ -207,7 +202,7 @@ void run::execute() {
             r.op = "add";
             r.body = {{ "ty", "cmd" }, { "st", start_timestamp }, { "da", data }, { "hb", ::conf.heartbeat_interval }};
             r.on_data = [&](nlohmann::json &resp) {
-                run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
+                run_msg_websocket_response m;
                 m.response = resp;
                 cmd_run_queue.push_move(m);
             };
@@ -241,9 +236,9 @@ void run::execute() {
     });
 
     while (1) {
-        run_msg m = cmd_run_queue.pop();
+        auto mv = cmd_run_queue.pop();
 
-        if (m.type == run_msg_type::PROCESS_EXITED) {
+        mv.match([&](run_msg_process_exited &m){
             if (m.pid == fork_ret) {
                 end_timestamp = m.timestamp;
                 wait_status = m.wait_status;
@@ -260,7 +255,8 @@ void run::execute() {
                 kill_timeout_normal_shutdown = true;
                 kill_signal_handler();
             }
-        } else if (m.type == run_msg_type::WEBSOCKET_RESPONSE) {
+        },
+        [&](run_msg_websocket_response &m){
             if (!sent_end_message) {
                 try {
                     if (m.response["status"] == "ok") {
@@ -285,7 +281,7 @@ void run::execute() {
                     PRINT_ERROR << "Unable to parse JSON body to confirm end: " << e.what();
                 }
             }
-        }
+        });
 
         if (pid_exited && have_event_id && !sent_end_message) {
             {
@@ -324,7 +320,7 @@ void run::execute() {
                     r.op = "add";
                     r.body = {{ "ty", "cmd" }, { "ev", event_id }, { "en", end_timestamp }, { "da", data }};
                     r.on_data = [&](nlohmann::json &resp) {
-                        run_msg m(run_msg_type::WEBSOCKET_RESPONSE);
+                        run_msg_websocket_response m;
                         m.response = resp;
                         cmd_run_queue.push_move(m);
                     };
