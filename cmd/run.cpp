@@ -244,7 +244,8 @@ void run::execute() {
         [&](run_msg_pipe_data &m){
             if (m.fd == 2 && stderr_pipe_capturer) {
                 if (m.data.size()) {
-//std::cerr << "STDERR: [" << m.data << "]" << std::endl;
+                    nlohmann::json body = {{ "ty", "stderr" }, { "at", m.timestamp }, { "da", { { "txt", m.data } } }};
+                    curr_event.add(body);
                 }
 
                 if (m.finished) {

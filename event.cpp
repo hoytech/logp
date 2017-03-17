@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <vector>
 
 #include "logp/event.h"
 #include "logp/util.h"
@@ -37,6 +38,8 @@ void event::end(nlohmann::json &body) {
         if (!body.count("en")) {
             throw logp::error("last message in an event must have 'en' param");
         }
+
+        timer.cancel(heartbeat_timer_cancel_token);
     }
 
     add(body);
@@ -52,40 +55,60 @@ void event::add(nlohmann::json &body) {
         body["ev"] = event_id;
     }
 
-    internal_queue.emplace(internal_entry_id, std::move(body));
+    pending_queue.emplace(internal_entry_id, std::move(body));
 
-    attempt_to_send();
+    attempt_to_send(internal_entry_id);
 }
 
 
 
 // Must have lock on internal_mutex while calling
-void event::attempt_to_send() {
-    for (auto &pair : internal_queue) {
-        uint64_t internal_entry_id = pair.first;
-        auto &body = pair.second;
+void event::attempt_to_send_all_pending() {
+    std::vector<uint64_t> pending_ids;
+
+    for (auto &pair : pending_queue) {
+        pending_ids.push_back(pair.first);
+    }
+
+    for (auto id : pending_ids) {
+        attempt_to_send(id);
+    }
+}
+
+
+// Must have lock on internal_mutex while calling
+void event::attempt_to_send(uint64_t internal_entry_id) {
+    if (!pending_queue.count(internal_entry_id)) return;
+
+    {
+        auto &body = pending_queue[internal_entry_id];
 
         if (internal_entry_id != 1) {
-            if (!event_id) continue;
+            if (!event_id) return;
             if (!body.count("ev")) body["ev"] = event_id;
         }
 
-        logp::websocket::request r;
-
-        r.op = "add";
-        r.body = body;
-        r.on_data = [&, internal_entry_id](nlohmann::json &resp){
-            std::unique_lock<std::mutex> lock(internal_mutex);
-            internal_queue.erase(internal_entry_id);
-            if (internal_entry_id == 1 && !event_id) handle_start_ack(resp);
-            if (ended && internal_queue.size() == 0) {
-                lock.unlock();
-                if (on_flushed) on_flushed();
-            }
-        };
-
-        ws_worker.push_move_new_request(r);
+        in_flight_queue.emplace(internal_entry_id, std::move(body));
+        pending_queue.erase(internal_entry_id);
     }
+
+    auto &body = in_flight_queue[internal_entry_id];
+
+    logp::websocket::request r;
+
+    r.op = "add";
+    r.body = body;
+    r.on_data = [&, internal_entry_id](nlohmann::json &resp){
+        std::unique_lock<std::mutex> lock(internal_mutex);
+        in_flight_queue.erase(internal_entry_id);
+        if (internal_entry_id == 1 && !event_id) handle_start_ack(resp);
+        if (ended && pending_queue.size() == 0 && in_flight_queue.size() == 0) {
+            lock.unlock();
+            if (on_flushed) on_flushed();
+        }
+    };
+
+    ws_worker.push_move_new_request(r);
 }
 
 
@@ -110,7 +133,7 @@ void event::handle_start_ack(nlohmann::json &resp) {
         });
     }
 
-    attempt_to_send();
+    attempt_to_send_all_pending();
 }
 
 }
