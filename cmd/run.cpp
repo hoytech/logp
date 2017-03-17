@@ -21,6 +21,7 @@
 #include "logp/websocket.h"
 #include "logp/signalwatcher.h"
 #include "logp/pipecapturer.h"
+#include "logp/event.h"
 #include "logp/util.h"
 
 
@@ -49,27 +50,15 @@ struct option *run::get_long_options() {
     return opts;
 }
 
-void run::process_option(int arg, int option_index, char *) {
-    switch (arg) {
-      case 0:
-        if (strcmp(my_long_options[option_index].name, "parent-cmd") == 0) {
-            opt_parent_cmd = true;
-        }
-        break;
-    };
+void run::process_option(int, int, char *) {
 }
 
 
 
-struct run_msg_process_exited {
-    int pid = 0;
-    int wait_status = 0;
-    uint64_t timestamp = 0;
-    struct rusage resource_usage = {};
+struct run_msg_sigchld {
 };
 
-struct run_msg_websocket_response {
-    nlohmann::json response;
+struct run_msg_websocket_flushed {
 };
 
 struct run_msg_pipe_data {
@@ -79,7 +68,7 @@ struct run_msg_pipe_data {
     std::string data;
 };
 
-using run_msg = mapbox::util::variant<run_msg_process_exited, run_msg_websocket_response, run_msg_pipe_data>;
+using run_msg = mapbox::util::variant<run_msg_sigchld, run_msg_websocket_flushed, run_msg_pipe_data>;
 
 
 void run::execute() {
@@ -97,20 +86,8 @@ void run::execute() {
     logp::signal_watcher sigwatcher;
 
     sigwatcher.subscribe(SIGCHLD, [&](){
-        struct timeval tv;
-        gettimeofday(&tv, nullptr);
-
-        int status;
-        struct rusage resource_usage;
-        pid_t pid = wait4(-1, &status, WNOHANG, &resource_usage);
-        if (pid > 0) {
-            run_msg_process_exited m;
-            m.pid = pid;
-            m.wait_status = status;
-            m.timestamp = (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
-            m.resource_usage = resource_usage;
-            cmd_run_queue.push_move(m);
-        }
+        run_msg_sigchld m;
+        cmd_run_queue.push_move(m);
     });
 
     hoytech::timer timer;
@@ -145,27 +122,6 @@ void run::execute() {
     ws_worker.run();
 
 
-    struct timeval start_tv;
-    gettimeofday(&start_tv, nullptr);
-    uint64_t start_timestamp = (uint64_t)start_tv.tv_sec * 1000000 + start_tv.tv_usec;
-
-    pid_t ppid = getppid();
-    std::string parent_cmd;
-
-    if (opt_parent_cmd) {
-#ifdef __linux__
-        try {
-            std::ifstream in(std::string("/proc/") + std::to_string(ppid) + std::string("/cmdline"));
-            std::getline(in, parent_cmd, '\0');
-        } catch (std::exception &e) {
-            PRINT_WARNING << "unable to get parent process name: " << e.what();
-        }
-#else
-        PRINT_WARNING << "--parent-cmd is currently only supported on linux, ignoring";
-#endif
-    }
-
-
 
     std::unique_ptr<logp::pipe_capturer> stderr_pipe_capturer;
     bool stderr_finished = false;
@@ -187,6 +143,11 @@ void run::execute() {
     ));
 
 
+
+    uint64_t start_timestamp = logp::util::curr_time();
+
+    pid_t ppid = getppid();
+
     pid_t fork_ret = fork();
 
     if (fork_ret == -1) {
@@ -203,6 +164,13 @@ void run::execute() {
 
     if (stderr_pipe_capturer) stderr_pipe_capturer->parent();
 
+
+    logp::event curr_event(timer, ws_worker);
+
+    curr_event.on_flushed = [&](){
+        run_msg_websocket_flushed m;
+        cmd_run_queue.push_move(m);
+    };
 
     PRINT_INFO << "Executing " << my_argv[optind] << " (pid " << fork_ret << ")";
 
@@ -228,21 +196,11 @@ void run::execute() {
 
             data["pid"] = fork_ret;
             data["ppid"] = ppid;
-            if (parent_cmd.size()) data["parent_cmd"] = parent_cmd;
         }
 
         {
-            logp::websocket::request r;
-
-            r.op = "add";
-            r.body = {{ "ty", "cmd" }, { "st", start_timestamp }, { "da", data }, { "hb", ::conf.heartbeat_interval }};
-            r.on_data = [&](nlohmann::json &resp) {
-                run_msg_websocket_response m;
-                m.response = resp;
-                cmd_run_queue.push_move(m);
-            };
-
-            ws_worker.push_move_new_request(r);
+            nlohmann::json body = {{ "ty", "cmd" }, { "st", start_timestamp }, { "da", data }, { "hb", ::conf.heartbeat_interval }};
+            curr_event.start(body);
         }
     }
 
@@ -250,34 +208,23 @@ void run::execute() {
 
     bool pid_exited = false;
     uint64_t end_timestamp = 0;
-    bool have_event_id = false;
-    uint64_t event_id = 0;
     bool sent_end_message = false;
     int wait_status = 0;
     struct rusage resource_usage = {};
 
-    timer.repeat_maybe(::conf.heartbeat_interval, [&]{
-        if (pid_exited) return false;
-        if (!have_event_id) return true;
-
-        logp::websocket::request r;
-
-        r.op = "hrt";
-        r.body = {{ "ev", event_id }};
-
-        ws_worker.push_move_new_request(r);
-
-        return true;
-    });
-
     while (1) {
         auto mv = cmd_run_queue.pop();
 
-        mv.match([&](run_msg_process_exited &m){
-            if (m.pid == fork_ret) {
-                end_timestamp = m.timestamp;
-                wait_status = m.wait_status;
-                resource_usage = m.resource_usage;
+        mv.match([&](run_msg_sigchld &){
+            uint64_t now = logp::util::curr_time();
+
+            int my_status;
+            pid_t wait_ret = wait4(-1, &my_status, WNOHANG, &resource_usage);
+            if (wait_ret <= 0) return;
+
+            if (wait_ret == fork_ret) {
+                end_timestamp = now;
+                wait_status = my_status;
                 pid_exited = true;
 
                 PRINT_INFO << "Process exited (" <<
@@ -291,31 +238,8 @@ void run::execute() {
                 kill_signal_handler();
             }
         },
-        [&](run_msg_websocket_response &m){
-            if (!sent_end_message) {
-                try {
-                    if (m.response["status"] == "ok") {
-                        PRINT_INFO << "log periodic server acked process start";
-                        event_id = m.response["ev"];
-                        have_event_id = true;
-                    } else {
-                        PRINT_ERROR << "status was not OK on start response: " << m.response.dump();
-                    }
-                } catch (std::exception &e) {
-                    PRINT_ERROR << "Unable to parse JSON body to extract event id: " << e.what();
-                }
-            } else {
-                try {
-                    if (m.response["status"] == "ok") {
-                        PRINT_INFO << "log periodic server acked process termination";
-                        exit(WEXITSTATUS(wait_status));
-                    } else {
-                        PRINT_ERROR << "status was not OK on end response: " << m.response.dump();
-                    }
-                } catch (std::exception &e) {
-                    PRINT_ERROR << "Unable to parse JSON body to confirm end: " << e.what();
-                }
-            }
+        [&](run_msg_websocket_flushed &){
+            exit(WEXITSTATUS(wait_status));
         },
         [&](run_msg_pipe_data &m){
             if (m.fd == 2 && stderr_pipe_capturer) {
@@ -329,7 +253,7 @@ void run::execute() {
             }
         });
 
-        if (pid_exited && have_event_id && (!stderr_pipe_capturer || stderr_finished) && !sent_end_message) {
+        if (pid_exited && (!stderr_pipe_capturer || stderr_finished) && !sent_end_message) {
             nlohmann::json data;
 
             if (WIFEXITED(wait_status)) {
@@ -359,19 +283,8 @@ void run::execute() {
             data["rusage"]["nvcsw"] = resource_usage.ru_nvcsw;
             data["rusage"]["nivcsw"] = resource_usage.ru_nivcsw;
 
-            {
-                logp::websocket::request r;
-
-                r.op = "add";
-                r.body = {{ "ty", "cmd" }, { "ev", event_id }, { "en", end_timestamp }, { "da", data }};
-                r.on_data = [&](nlohmann::json &resp) {
-                    run_msg_websocket_response m;
-                    m.response = resp;
-                    cmd_run_queue.push_move(m);
-                };
-
-                ws_worker.push_move_new_request(r);
-            }
+            nlohmann::json body = {{ "ty", "cmd" }, { "en", end_timestamp }, { "da", data }};
+            curr_event.end(body);
 
             sent_end_message = true;
         }

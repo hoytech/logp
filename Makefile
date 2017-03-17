@@ -5,7 +5,7 @@ INC      = -Iinc -Ihoytech-cpp -Iinc/websocketpp -Iinc/variant/include
 CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
 LDFLAGS  = $(XLDFLAGS)
 
-PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o hoytech-cpp/timer.o cmd/base.o cmd/run.o cmd/ps.o cmd/ping.o
+PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o event.o hoytech-cpp/timer.o cmd/base.o cmd/run.o cmd/ps.o cmd/ping.o
 
 
 ifeq ($(wildcard hoytech-cpp/README.md),)

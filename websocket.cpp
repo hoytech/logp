@@ -26,6 +26,15 @@ namespace logp { namespace websocket {
 
 
 
+static std::string debug_format_raw_msg(std::string msg) {
+    size_t newline_loc = msg.find('\n');
+    std::string header = msg.substr(0, newline_loc);
+    std::string body = msg.substr(newline_loc + 1, msg.size());
+    return logp::concat_string("H:", header, " B:", body);
+}
+
+
+
 std::string request::render_body() {
     nlohmann::json j = body;
 
@@ -300,6 +309,8 @@ void connection::setup() {
     });
 
     wspp_client.set_message_handler([this](websocketpp::connection_hdl, websocketpp::client<websocketpp::config::core>::message_ptr msg) {
+        PRINT_DEBUG << "RECV: " << debug_format_raw_msg(msg->get_payload());
+
         std::stringstream ss(msg->get_payload());
 
         uint64_t request_id = 0;
@@ -429,6 +440,7 @@ connection::~connection() {
 
 
 void connection::send_message_move(std::string &msg) {
+    PRINT_DEBUG << "SEND: " << debug_format_raw_msg(msg);
     pending_messages.emplace_back(std::move(msg));
 
     drain_pending_messages();
