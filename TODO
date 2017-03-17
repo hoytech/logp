@@ -15,5 +15,6 @@
     logp: warning: error from server for add op: event already ended
     logp: error: was unable to communicate with log periodic server
 
+? collect cwd
 ? tags
 ? windows support

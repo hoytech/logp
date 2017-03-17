@@ -31,7 +31,8 @@ namespace logp { namespace cmd {
 const char *run::usage() {
     static const char *u =
         "logp run [options] <command>\n"
-        "  --parent-cmd    Collect the name of the parent process\n"
+        "  --no-stderr    Do not collect stderr output\n"
+        "  --stdout       Collect stdout output\n"
         "\n"
         "  <command>   This is a unix command, possibly including options\n"
     ;
@@ -43,14 +44,24 @@ const char *run::getopt_string() { return ""; }
 
 struct option *run::get_long_options() {
     static struct option opts[] = {
-        {"parent-cmd", no_argument, 0, 0},
+        {"no-stderr", no_argument, 0, 0},
+        {"stdout", no_argument, 0, 0},
         {0, 0, 0, 0}
     };
 
     return opts;
 }
 
-void run::process_option(int, int, char *) {
+void run::process_option(int arg, int option_index, char *) {
+    switch (arg) {
+      case 0:
+        if (strcmp(my_long_options[option_index].name, "no-stderr") == 0) {
+            opt_stderr = false;
+        } else if (strcmp(my_long_options[option_index].name, "stdout") == 0) {
+            opt_stdout = true;
+        }
+        break;
+    };
 }
 
 
@@ -126,22 +137,48 @@ void run::execute() {
     std::unique_ptr<logp::pipe_capturer> stderr_pipe_capturer;
     bool stderr_finished = false;
 
-    stderr_pipe_capturer = std::unique_ptr<logp::pipe_capturer>(new logp::pipe_capturer(2, timer,
-        [&](std::string &buf, uint64_t timestamp){
-            run_msg_pipe_data m;
-            m.fd = 2;
-            m.timestamp = timestamp;
-            m.data = std::move(buf);
-            cmd_run_queue.push_move(m);
-        },
-        [&](){
-            run_msg_pipe_data m;
-            m.fd = 2;
-            m.finished = true;
-            cmd_run_queue.push_move(m);
-        }
-    ));
+    if (opt_stderr) {
+        int fd = 2;
 
+        stderr_pipe_capturer = std::unique_ptr<logp::pipe_capturer>(new logp::pipe_capturer(fd, timer,
+            [&, fd](std::string &buf, uint64_t timestamp){
+                run_msg_pipe_data m;
+                m.fd = fd;
+                m.timestamp = timestamp;
+                m.data = std::move(buf);
+                cmd_run_queue.push_move(m);
+            },
+            [&, fd](){
+                run_msg_pipe_data m;
+                m.fd = fd;
+                m.finished = true;
+                cmd_run_queue.push_move(m);
+            }
+        ));
+    }
+
+    std::unique_ptr<logp::pipe_capturer> stdout_pipe_capturer;
+    bool stdout_finished = false;
+
+    if (opt_stdout) {
+        int fd = 1;
+
+        stdout_pipe_capturer = std::unique_ptr<logp::pipe_capturer>(new logp::pipe_capturer(fd, timer,
+            [&, fd](std::string &buf, uint64_t timestamp){
+                run_msg_pipe_data m;
+                m.fd = fd;
+                m.timestamp = timestamp;
+                m.data = std::move(buf);
+                cmd_run_queue.push_move(m);
+            },
+            [&, fd](){
+                run_msg_pipe_data m;
+                m.fd = fd;
+                m.finished = true;
+                cmd_run_queue.push_move(m);
+            }
+        ));
+    }
 
 
     uint64_t start_timestamp = logp::util::curr_time();
@@ -155,6 +192,7 @@ void run::execute() {
         _exit(1);
     } else if (fork_ret == 0) {
         if (stderr_pipe_capturer) stderr_pipe_capturer->child();
+        if (stdout_pipe_capturer) stdout_pipe_capturer->child();
 
         sigwatcher.unblock();
         execvp(my_argv[optind], my_argv+optind);
@@ -163,6 +201,7 @@ void run::execute() {
     }
 
     if (stderr_pipe_capturer) stderr_pipe_capturer->parent();
+    if (stdout_pipe_capturer) stdout_pipe_capturer->parent();
 
 
     logp::event curr_event(timer, ws_worker);
@@ -251,10 +290,19 @@ void run::execute() {
                 if (m.finished) {
                     stderr_finished = true;
                 }
+            } else if (m.fd == 1 && stdout_pipe_capturer) {
+                if (m.data.size()) {
+                    nlohmann::json body = {{ "ty", "stdout" }, { "at", m.timestamp }, { "da", { { "txt", m.data } } }};
+                    curr_event.add(body);
+                }
+
+                if (m.finished) {
+                    stdout_finished = true;
+                }
             }
         });
 
-        if (pid_exited && (!stderr_pipe_capturer || stderr_finished) && !sent_end_message) {
+        if (pid_exited && (!stderr_pipe_capturer || stderr_finished) && (!stdout_pipe_capturer || stdout_finished) && !sent_end_message) {
             nlohmann::json data;
 
             if (WIFEXITED(wait_status)) {

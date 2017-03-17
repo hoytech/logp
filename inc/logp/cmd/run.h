@@ -13,7 +13,8 @@ class run : public base {
     void execute();
 
   private:
-    bool opt_parent_cmd = false;
+    bool opt_stderr = true;
+    bool opt_stdout = false;
 };
 
 }}
