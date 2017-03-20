@@ -252,7 +252,7 @@ void run::execute() {
     struct rusage resource_usage = {};
 
     while (1) {
-        auto mv = cmd_run_queue.pop();
+        auto mv = cmd_run_queue.shift();
 
         mv.match([&](run_msg_sigchld &){
             uint64_t now = logp::util::curr_time();
