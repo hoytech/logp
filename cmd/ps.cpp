@@ -275,7 +275,7 @@ void ps::execute() {
         logp::websocket::request r;
 
         r.op = "get";
-        r.body = {{"from", 0}};
+        r.body = {{"in_progress", true}, {"summary", true}};
         r.on_data = [&](nlohmann::json &res) {
             if (!follow) {
                 std::cout << render_in_progress(res) << std::endl;
