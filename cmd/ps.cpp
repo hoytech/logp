@@ -254,9 +254,32 @@ void process_follow(nlohmann::json &res) {
 
         lanes[rec.lane] = false;
         evid_to_rec.erase(static_cast<uint64_t>(res["ev"]));
-    } else {
-        print_lane_chart(lanes, "", 0);
+    } else if (res.count("ty") && (res["ty"] == "stderr" || res["ty"] == "stdout")) {
+        auto find_res = evid_to_rec.find(res["ev"]);
+
+        if (find_res == evid_to_rec.end()) {
+            PRINT_WARNING << "saw " << res["ty"] << " event without start, ignoring";
+            return;
+        }
+
+        auto &rec = find_res->second;
+
+        std::cout << "[" << render_time(res["at"]) << "] ";
+        print_lane_chart(lanes, "┝", rec.lane);
+        std::cout << (res["ty"] == "stderr" ? " !    " : " >    ");
+
+        if (res.count("da") && res["da"].count("txt")) {
+            std::string text = res["da"]["txt"];
+
+            text.resize(text.find_last_not_of(" \n\t\r"));
+
+            if (res["ty"] == "stderr") text = logp::util::colour_red(text);
+            std::cout << text;
+        }
+
         std::cout << std::endl;
+    } else {
+        PRINT_INFO << "Unknown entry, ignoring";
     }
 }
 
@@ -275,7 +298,8 @@ void ps::execute() {
         logp::websocket::request r;
 
         r.op = "get";
-        r.body = {{"in_progress", true}, {"summary", true}};
+        r.body = {{"in_progress", true}};
+        if (!follow) r.body["summary"] = true;
         r.on_data = [&](nlohmann::json &res) {
             if (!follow) {
                 std::cout << render_in_progress(res) << std::endl;
