@@ -26,7 +26,7 @@ clean:
 realclean: clean
 	rm -rf dist
 
-_buildinfo.h: .git/refs/heads/master
+_buildinfo.h:
 	perl -e '$$v = `git describe --tags --match "logp-*"`; $$v =~ s/^logp-|\s*$$//g; print qq{#define LOGP_VERSION "$$v"\n}' > _buildinfo.h
 
 logp: $(PROGOBJS)
