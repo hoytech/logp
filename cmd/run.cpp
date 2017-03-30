@@ -92,7 +92,10 @@ void run::execute() {
     hoytech::protected_queue<run_msg> cmd_run_queue;
 
 
-    signal(SIGCHLD, [](int){});
+    struct sigaction sa;
+    sa.sa_handler = [](int){};
+    sa.sa_flags = SA_NOCLDSTOP;
+    sigaction(SIGCHLD, &sa, nullptr);
 
     logp::signal_watcher sigwatcher;
 
