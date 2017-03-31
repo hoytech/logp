@@ -49,6 +49,12 @@ Next compile like so:
 
     make XCXXFLAGS=-I/usr/local/opt/openssl/include XLDFLAGS=-L/usr/local/opt/openssl/lib -j 4
 
+### Solaris
+
+If you have the GNU tools installed and an up-to-date OpenSSL, you should be able to compile like so:
+
+    make XLDFLAGS=-lsocket -j 4
+
 ### Problems?
 
 If all goes well, your binary will be called `logp`. If all does not go well, please [file a github issue](https://github.com/hoytech/logp/issues/new) and don't forget to include the full error message and your OS/compiler types and versions.
