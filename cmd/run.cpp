@@ -261,8 +261,11 @@ void run::execute() {
             uint64_t now = logp::util::curr_time();
 
             int my_status;
-            pid_t wait_ret = wait4(-1, &my_status, WNOHANG, &resource_usage);
-            if (wait_ret <= 0) return;
+            pid_t wait_ret = wait4(fork_ret, &my_status, WNOHANG, &resource_usage);
+            if (wait_ret <= 0) {
+                PRINT_WARNING << "Received error from wait4: " << strerror(errno);
+                return;
+            }
 
             if (wait_ret == fork_ret) {
                 end_timestamp = now;
@@ -278,6 +281,8 @@ void run::execute() {
 
                 kill_timeout_normal_shutdown = true;
                 kill_signal_handler();
+            } else {
+                PRINT_WARNING << "Received success from wait4 for a different process: " << wait_ret;
             }
         },
         [&](run_msg_websocket_flushed &){
