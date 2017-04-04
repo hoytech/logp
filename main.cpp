@@ -13,6 +13,7 @@
 #include "logp/cmd/run.h"
 #include "logp/cmd/ps.h"
 #include "logp/cmd/ping.h"
+#include "logp/cmd/get.h"
 
 
 logp::config conf;
@@ -159,6 +160,8 @@ int main(int argc, char **argv) {
         c = new logp::cmd::ps();
     } else if (command == "ping") {
         c = new logp::cmd::ping();
+    } else if (command == "get") {
+        c = new logp::cmd::get();
     }
 
     if (c) {

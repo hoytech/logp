@@ -13,12 +13,13 @@
 #include <openssl/x509v3.h>
 
 #include "nlohmann/json.hpp"
+#include "mapbox/variant.hpp"
+#include "hoytech/protected_queue.h"
 
 #include "websocketpp/config/core.hpp"
 #include "websocketpp/client.hpp"
 #include "websocketpp/extensions/permessage_deflate/enabled.hpp"
 #include "websocketpp/uri.hpp"
-#include "hoytech/protected_queue.h"
 
 
 
@@ -38,18 +39,47 @@ struct my_websocketpp_config : public websocketpp::config::core {
 
 
 
+class connection;
+class worker;
+
+
+struct request_ini {
+    nlohmann::json body;
+};
+struct request_png {
+    std::string echo;
+    std::function<void(nlohmann::json &)> on_pong;
+};
+struct request_get {
+    nlohmann::json query;
+    nlohmann::json state;
+    std::function<void(nlohmann::json &)> on_entry;
+    std::function<void()> on_monitoring;
+    bool started_monitoring = false;
+};
+struct request_add {
+    nlohmann::json entry;
+    std::function<void(nlohmann::json &)> on_ack;
+};
+struct request_hrt {
+    uint64_t event_id;
+};
+struct request_res {
+    std::string unpause_key;
+};
+
+using request_base = mapbox::util::variant<request_ini, request_png, request_get, request_add, request_hrt, request_res>;
+
 class request {
   public:
-    std::string render_body();
+    std::string render();
+    std::string get_op_name();
+    void handle(nlohmann::json &body, worker *w);
 
-    std::string op;
-    nlohmann::json body;
-    std::function<void(nlohmann::json &)> on_data;
-    std::function<void()> on_finished_history;
-
+    request_base op;
     uint64_t request_id = 0;
-    uint64_t latest_entry = 0;
 };
+
 
 
 
@@ -59,6 +89,7 @@ class worker {
         setup();
     }
 
+    void push_move_new_request(request_base r);
     void push_move_new_request(request &r);
     void run();
     std::function<void(nlohmann::json &)> on_ini_response;
@@ -75,9 +106,8 @@ class worker {
     void setup();
     void run_event_loop();
     void trigger_activity_pipe();
-    std::string prepare_new_request(request &req);
-    std::string prepare_new_request(request &req, uint64_t request_id);
-    std::string render_request(request &req);
+    void allocate_request_id(request &req);
+    void internal_send_request(connection &c, request &r);
 
     std::thread t;
     uint64_t next_request_id = 1;

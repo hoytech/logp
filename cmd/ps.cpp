@@ -295,19 +295,19 @@ void ps::execute() {
     }
 
     {
-        logp::websocket::request r;
+        logp::websocket::request_get r;
 
-        r.op = "get";
-        r.body = {{"in_progress", true}};
-        if (!follow) r.body["summary"] = true;
-        r.on_data = [&](nlohmann::json &res) {
+        r.query = {{ "select", "event" }, { "from", nlohmann::json::array({"en", logp::util::curr_time(), nullptr}) }};
+
+        r.on_entry = [&](nlohmann::json &res) {
             if (!follow) {
                 std::cout << render_in_progress(res) << std::endl;
             } else {
                 process_follow(res);
             }
         };
-        r.on_finished_history = [&]{
+
+        r.on_monitoring = [&]{
            if (!follow) exit(0);
            finished_history = true;
         };

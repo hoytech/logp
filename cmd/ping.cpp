@@ -113,12 +113,10 @@ void ping::execute() {
 
     std::function<void()> send_ping = [&]() {
         {
-            logp::websocket::request r;
-
             uint64_t start = logp::util::curr_time();
 
-            r.op = "png";
-            r.on_data = [&, start](nlohmann::json &res){
+            logp::websocket::request_png r;
+            r.on_pong = [&, start](nlohmann::json &res){
                 uint64_t end = logp::util::curr_time();
 
                 uint64_t server_time = res["time"];

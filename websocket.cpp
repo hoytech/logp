@@ -34,14 +34,109 @@ static std::string debug_format_raw_msg(std::string msg) {
 }
 
 
+std::string request::get_op_name() {
+    std::string name;
 
-std::string request::render_body() {
-    nlohmann::json j = body;
+    op.match(
+        [&](request_ini &) {
+            name = "ini";
+        },
+        [&](request_png &) {
+            name = "png";
+        },
+        [&](request_get &) {
+            name = "get";
+        },
+        [&](request_add &) {
+            name = "add";
+        },
+        [&](request_hrt &) {
+            name = "hrt";
+        },
+        [&](request_res &) {
+            name = "res";
+        }
+    );
 
-    if (latest_entry) j["latest_entry"] = latest_entry;
-
-    return j.dump();
+    return name;
 }
+
+std::string request::render() {
+    nlohmann::json header({ { "op", get_op_name() } });
+    if (request_id) header["id"] = request_id;
+
+    nlohmann::json body({});
+
+    op.match(
+        [&](request_ini &r) {
+            body = r.body;
+        },
+        [&](request_png &r) {
+            if (r.echo.size()) body["echo"] = r.echo;
+        },
+        [&](request_get &r) {
+            body["query"] = r.query;
+            if (r.state.size()) body["state"] = r.state;
+        },
+        [&](request_add &r) {
+            body = r.entry;
+        },
+        [&](request_hrt &r) {
+            body["ev"] = r.event_id;
+        },
+        [&](request_res &r) {
+            body["k"] = r.unpause_key;
+        }
+    );
+
+    std::string full_msg = header.dump();
+    full_msg += "\n";
+    full_msg += body.dump();
+
+    return full_msg;
+}
+
+
+void request::handle(nlohmann::json &body, worker *w) {
+    op.match(
+        [&](request_ini &) {
+            throw logp::error("ini request shouldn't have gotten to handler"); // assert
+        },
+        [&](request_png &r) {
+            if (r.on_pong) r.on_pong(body);
+        },
+        [&](request_get &r) {
+            if (r.on_entry && body.count("e")) {
+                for (auto &elem : body["e"]) {
+                    r.on_entry(elem);
+                }
+            }
+
+            if (body.count("s")) {
+                r.state = body["s"];
+                if (!r.started_monitoring && r.state["ph"] == "mn") {
+                    r.started_monitoring = true;
+                    r.on_monitoring();
+                }
+            }
+
+            if (body.count("p")) {
+                std::string unpause_key = body["p"];
+                request resp;
+                resp.op = request_res{unpause_key};
+                resp.request_id = request_id;
+                w->push_move_new_request(resp);
+            }
+        },
+        [&](request_add &r) {
+            if (r.on_ack) r.on_ack(body);
+        },
+        [&](request_hrt &) {},
+        [&](request_res &) {}
+    );
+}
+
+
 
 
 
@@ -70,6 +165,12 @@ void worker::setup() {
 
 
 
+void worker::push_move_new_request(request_base op) {
+    request r;
+    r.op = std::move(op);
+    push_move_new_request(r);
+}
+
 void worker::push_move_new_request(request &r) {
     new_requests_queue.push_move(r);
     trigger_activity_pipe();
@@ -78,36 +179,23 @@ void worker::push_move_new_request(request &r) {
 
 
 
-std::string worker::prepare_new_request(request &r) {
+void worker::allocate_request_id(request &r) {
     uint64_t request_id = next_request_id++;
-
     r.request_id = request_id;
-
-    return prepare_new_request(r, request_id);
 }
 
-std::string worker::prepare_new_request(request &r, uint64_t request_id) {
-    std::string initial_message = render_request(r);
+void worker::internal_send_request(connection &c, request &r) {
+    std::string rendered = r.render();
 
-    if (request_id) {
+    if (r.request_id) {
         active_requests.emplace(std::piecewise_construct,
-                                std::forward_as_tuple(request_id),
+                                std::forward_as_tuple(r.request_id),
                                 std::forward_as_tuple(std::move(r)));
     }
 
-    return initial_message;
+    c.send_message_move(rendered);
 }
 
-std::string worker::render_request(request &r) {
-    nlohmann::json j = {{ "op", r.op }};
-    if (r.request_id) j["id"] = r.request_id;
-
-    std::string full_msg = j.dump();
-    full_msg += "\n";
-    full_msg += r.render_body();
-
-    return full_msg;
-}
 
 
 void worker::run() {
@@ -130,17 +218,13 @@ void worker::run_event_loop() {
 
     {
         logp::websocket::request r;
-
-        r.op = "ini";
-        r.body = {{ "tk", token }, { "prot", 1 }};
-
-        std::string msg = prepare_new_request(r, 0);
-        c.send_message_move(msg);
+        r.op = logp::websocket::request_ini{ {{ "tk", token }, { "prot", 2 }} };
+        internal_send_request(c, r);
     }
 
     // Re-send any live requests
     for (auto it : active_requests) {
-        std::string msg = render_request(it.second);
+        std::string msg = it.second.render();
         c.send_message_move(msg);
     }
 
@@ -175,8 +259,8 @@ void worker::run_event_loop() {
             auto temp_queue = new_requests_queue.pop_all_no_wait();
 
             for (auto &req : temp_queue) {
-                std::string msg = prepare_new_request(req);
-                c.send_message_move(msg);
+                if (!req.request_id) allocate_request_id(req);
+                internal_send_request(c, req);
             }
         }
 
@@ -370,40 +454,9 @@ void connection::setup() {
 
             if (json.count("err")) {
                 std::string err = json["err"];
-                PRINT_WARNING << "error from server for " << req.op << " op: " << err;
-            } else if (req.op == "get") {
-                for (auto elem : json) {
-                    if (elem.count("e")) {
-                        auto &e = elem["e"];
-
-                        req.latest_entry = std::max(req.latest_entry, static_cast<uint64_t>(e["id"]));
-
-                        if (req.on_data) req.on_data(e);
-                    } else if (elem.count("p")) {
-                        auto &p = elem["p"];
-
-                        if (p.count("latest_entry_id")) {
-                            req.latest_entry = std::max(req.latest_entry, static_cast<uint64_t>(p["latest_entry_id"]));
-                        }
-
-                        if (p.count("finished_history") && req.on_finished_history) {
-                            req.on_finished_history();
-                        }
-
-                        if (p.count("pause")) {
-                            std::string unpause_key = p["id"];
-
-                            logp::websocket::request r;
-
-                            r.op = "res";
-                            r.body = {{ "k", unpause_key }};
-
-                            parent_worker->push_move_new_request(r);
-                        }
-                    }
-                }
+                PRINT_WARNING << "error from server for " << req.get_op_name() << " op: " << err;
             } else {
-                if (req.on_data) req.on_data(json);
+                req.handle(json, parent_worker);
             }
         } catch (std::exception &e) {
             PRINT_WARNING << "unable to parse websocket body, ignoring: " << e.what();

@@ -92,13 +92,12 @@ void event::attempt_to_send(uint64_t internal_entry_id) {
         pending_queue.erase(internal_entry_id);
     }
 
-    auto &body = in_flight_queue[internal_entry_id];
+    auto &entry = in_flight_queue[internal_entry_id];
 
-    logp::websocket::request r;
+    logp::websocket::request_add r;
 
-    r.op = "add";
-    r.body = body;
-    r.on_data = [&, internal_entry_id](nlohmann::json &resp){
+    r.entry = entry;
+    r.on_ack = [&, internal_entry_id](nlohmann::json &resp){
         std::unique_lock<std::mutex> lock(internal_mutex);
         in_flight_queue.erase(internal_entry_id);
         if (internal_entry_id == 1 && !event_id) handle_start_ack(resp);
@@ -124,11 +123,7 @@ void event::handle_start_ack(nlohmann::json &resp) {
 
     if (heartbeat_interval) {
         heartbeat_timer_cancel_token = timer.repeat(heartbeat_interval, [&]{
-            logp::websocket::request r;
-
-            r.op = "hrt";
-            r.body = {{ "ev", event_id }};
-
+            logp::websocket::request_hrt r{event_id};
             ws_worker.push_move_new_request(r);
         });
     }
