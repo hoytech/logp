@@ -18,7 +18,7 @@ endif
 
 
 .PHONY: all clean realclean test
-all: logp
+all: logp logp_preload.so
 
 clean:
 	rm -f *.o cmd/*.o hoytech-cpp/*.o *.so logp _buildinfo.h

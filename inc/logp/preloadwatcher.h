@@ -8,10 +8,14 @@
 #include <string>
 #include <memory>
 
+#include "nlohmann/json.hpp"
 #include "ev++.h"
+
+#include "logp/util.h"
 
 
 namespace logp {
+
 
 class preload_watcher;
 
@@ -33,17 +37,20 @@ class preload_connection {
     preload_watcher *parent;
     ev::io io;
     int fd;
-    int pid = -1;
     std::string buffer;
+    int pid = -1;
+    uint64_t start_ts = 0;
 };
 
 class preload_watcher {
   public:
-    preload_watcher();
+    preload_watcher() {};
     void run();
     std::string get_socket_path() {
         return socket_path;
     }
+    std::function<void(uint64_t ts, nlohmann::json &data)> on_proc_start;
+    std::function<void(uint64_t ts, nlohmann::json &data)> on_proc_end;
 
   private:
     friend class preload_connection;

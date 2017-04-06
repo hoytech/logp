@@ -10,8 +10,6 @@
 #include <string>
 #include <vector>
 
-#include "nlohmann/json.hpp"
-
 #include "logp/util.h"
 #include "logp/preloadwatcher.h"
 
@@ -21,7 +19,7 @@ namespace logp {
 bool atexit_handler_registered = false;
 std::vector<std::string> tmpdirs_to_cleanup;
 
-preload_watcher::preload_watcher() {
+void preload_watcher::run() {
     char my_temp_dir[] = "/tmp/logp-XXXXXX";
     if (!mkdtemp(my_temp_dir)) throw logp::error("mkdtemp error: ", strerror(errno));
 
@@ -58,9 +56,7 @@ preload_watcher::preload_watcher() {
     if (listen(fd, 5) == -1) {
         throw logp::error("unable to listen on unix socket '", socket_path, "': ", strerror(errno));
     }
-}
 
-void preload_watcher::run() {
     t = std::thread([this]() {
         //ev::dynamic_loop loop(EVFLAG_NOSIGMASK);
         loop = std::unique_ptr<ev::dynamic_loop>(new ev::dynamic_loop(EVFLAG_NOSIGMASK));
@@ -90,27 +86,31 @@ void preload_connection::readable() {
     auto ret = read(fd, tmpbuf, sizeof(tmpbuf));
 
     if (ret <= 0) {
+        uint64_t end_ts = logp::util::curr_time();;
+
         auto j = nlohmann::json({
-            {"msg", "exit"},
             {"pid", pid}
         });
-        std::cerr << "PRELOAD EXIT: " << j.dump() << std::endl;
+
+        if (parent->on_proc_end) parent->on_proc_end(end_ts, j);
 
         parent->conn_map.erase(fd);
         return;
     }
 
+    if (start_ts == 0) start_ts = logp::util::curr_time();
+
     buffer += std::string(tmpbuf, (size_t)ret);
 
     if (buffer.size() && buffer[buffer.size() - 1] == '\n') {
-        // assumes client only sends 1 line of data
+        // NOTE: assumes client only sends 1 line of data (which is true for now)
         buffer.resize(buffer.size() - 1);
 
         auto j = nlohmann::json::parse(buffer);
-        j["msg"] = "create";
-        std::cerr << "PRELOAD CREATE: " << j.dump() << std::endl;
 
         if (j.count("pid")) pid = j["pid"];
+
+        if (parent->on_proc_start) parent->on_proc_start(start_ts, j);
     }
 }
 

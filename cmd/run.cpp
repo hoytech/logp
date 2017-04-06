@@ -34,6 +34,7 @@ const char *run::usage() {
         "logp run [options] <command>\n"
         "  --no-stderr    Do not collect stderr output\n"
         "  --stdout       Collect stdout output\n"
+        "  -f / --fork    Follow forked processes\n"
         "\n"
         "  <command>   This is a unix command, possibly including options\n"
     ;
@@ -41,12 +42,13 @@ const char *run::usage() {
     return u;
 }
 
-const char *run::getopt_string() { return ""; }
+const char *run::getopt_string() { return "f"; }
 
 struct option *run::get_long_options() {
     static struct option opts[] = {
         {"no-stderr", no_argument, 0, 0},
         {"stdout", no_argument, 0, 0},
+        {"fork", no_argument, 0, 'f'},
         {0, 0, 0, 0}
     };
 
@@ -61,6 +63,10 @@ void run::process_option(int arg, int option_index, char *) {
         } else if (strcmp(my_long_options[option_index].name, "stdout") == 0) {
             opt_stdout = true;
         }
+        break;
+
+      case 'f':
+        opt_follow_fork = true;
         break;
     };
 }
@@ -80,7 +86,17 @@ struct run_msg_pipe_data {
     std::string data;
 };
 
-using run_msg = mapbox::util::variant<run_msg_sigchld, run_msg_websocket_flushed, run_msg_pipe_data>;
+struct run_msg_proc_started {
+    uint64_t timestamp;
+    nlohmann::json data;
+};
+
+struct run_msg_proc_exited {
+    uint64_t timestamp;
+    nlohmann::json data;
+};
+
+using run_msg = mapbox::util::variant<run_msg_sigchld, run_msg_websocket_flushed, run_msg_pipe_data, run_msg_proc_started, run_msg_proc_exited>;
 
 
 void run::execute() {
@@ -129,11 +145,25 @@ void run::execute() {
     sigwatcher.subscribe(SIGQUIT, kill_signal_handler);
     sigwatcher.subscribe(SIGTERM, kill_signal_handler);
 
+
+
+
+    preloadwatcher.on_proc_start = [&](uint64_t ts, nlohmann::json &data){
+        run_msg_proc_started m{ts, std::move(data)};
+        cmd_run_queue.push_move(m);
+    };
+
+    preloadwatcher.on_proc_end = [&](uint64_t ts, nlohmann::json &data){
+        run_msg_proc_exited m{ts, std::move(data)};
+        cmd_run_queue.push_move(m);
+    };
+
+
+
+
     sigwatcher.run();
-
     timer.run();
-
-    preloadwatcher.run();
+    if (opt_follow_fork) preloadwatcher.run();
 
 
     logp::websocket::worker ws_worker;
@@ -202,8 +232,10 @@ void run::execute() {
         if (stderr_pipe_capturer) stderr_pipe_capturer->child();
         if (stdout_pipe_capturer) stdout_pipe_capturer->child();
 
-        ::setenv("LOGP_SOCKET_PATH", preloadwatcher.get_socket_path().c_str(), 0);
-        ::setenv("LD_PRELOAD", "./logp_preload.so", 0);
+        if (opt_follow_fork) {
+            ::setenv("LOGP_SOCKET_PATH", preloadwatcher.get_socket_path().c_str(), 0);
+            ::setenv("LD_PRELOAD", "./logp_preload.so", 0);
+        }
 
         sigwatcher.unblock();
         execvp(my_argv[optind], my_argv+optind);
@@ -316,7 +348,16 @@ void run::execute() {
                     stdout_finished = true;
                 }
             }
-        });
+        },
+        [&](run_msg_proc_started &m){
+            nlohmann::json body = {{ "ty", "proc-start" }, { "at", m.timestamp }, { "da", m.data }};
+            curr_event.add(body);
+        },
+        [&](run_msg_proc_exited &m){
+            nlohmann::json body = {{ "ty", "proc-exit" }, { "at", m.timestamp }, { "da", m.data }};
+            curr_event.add(body);
+        }
+        );
 
         if (pid_exited && (!stderr_pipe_capturer || stderr_finished) && (!stdout_pipe_capturer || stdout_finished) && !sent_end_message) {
             nlohmann::json data;

@@ -15,6 +15,7 @@ class run : public base {
   private:
     bool opt_stderr = true;
     bool opt_stdout = false;
+    bool opt_follow_fork = false;
 };
 
 }}
