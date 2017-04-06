@@ -1,11 +1,11 @@
-W        = -Wall -Wextra
+W        = -Wall -Wextra -Wno-strict-aliasing
 OPT      = -O2 -g
 STD      = -std=c++11
-INC      = -Iinc -Ihoytech-cpp -Iinc/websocketpp -Iinc/variant/include
+INC      = -Iinc -Ihoytech-cpp -Iinc/websocketpp -Iinc/variant/include -Iinc/libev/
 CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
 LDFLAGS  = $(XLDFLAGS)
 
-PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o event.o hoytech-cpp/timer.o cmd/base.o cmd/run.o cmd/ps.o cmd/ping.o cmd/get.o
+PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o preloadwatcher.o event.o hoytech-cpp/timer.o cmd/base.o cmd/run.o cmd/ps.o cmd/ping.o cmd/get.o
 
 
 ifeq ($(wildcard hoytech-cpp/README.md),)
@@ -29,8 +29,8 @@ realclean: clean
 _buildinfo.h:
 	perl -e '$$v = `git describe --tags --match "logp-*"`; $$v =~ s/^logp-|\s*$$//g; print qq{#define LOGP_VERSION "$$v"\n}' > _buildinfo.h
 
-logp: $(PROGOBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(PROGOBJS) -lz -lssl -lcrypto -lpthread -o $@
+logp: $(PROGOBJS) ev.o
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) ev.o $(PROGOBJS) -lz -lssl -lcrypto -lpthread -o $@
 
 %.o: %.cpp inc/logp/*.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -40,4 +40,7 @@ cmd/*.o: inc/logp/cmd/*.h
 main.o: _buildinfo.h inc/logp/cmd/*.h
 
 logp_preload.so: logp_preload.cpp
-	$(CXX) $(CXXFLAGS) $(INC) -shared -fvisibility=hidden -o $@ logp_preload.cpp -ldl
+	$(CXX) $(CXXFLAGS) -shared -fvisibility=hidden -o $@ logp_preload.cpp -ldl
+
+ev.o: ev.c inc/libev/*.c inc/libev/*.h
+	$(CC) $(OPT) $(INC) -fPIC -c $< -o $@

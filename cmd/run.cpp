@@ -20,6 +20,7 @@
 #include "logp/cmd/run.h"
 #include "logp/websocket.h"
 #include "logp/signalwatcher.h"
+#include "logp/preloadwatcher.h"
 #include "logp/pipecapturer.h"
 #include "logp/event.h"
 #include "logp/util.h"
@@ -104,6 +105,8 @@ void run::execute() {
         cmd_run_queue.push_move(m);
     });
 
+    logp::preload_watcher preloadwatcher;
+
     hoytech::timer timer;
 
     bool kill_timeout_normal_shutdown = false;
@@ -129,6 +132,8 @@ void run::execute() {
     sigwatcher.run();
 
     timer.run();
+
+    preloadwatcher.run();
 
 
     logp::websocket::worker ws_worker;
@@ -196,6 +201,9 @@ void run::execute() {
     } else if (fork_ret == 0) {
         if (stderr_pipe_capturer) stderr_pipe_capturer->child();
         if (stdout_pipe_capturer) stdout_pipe_capturer->child();
+
+        ::setenv("LOGP_SOCKET_PATH", preloadwatcher.get_socket_path().c_str(), 0);
+        ::setenv("LD_PRELOAD", "./logp_preload.so", 0);
 
         sigwatcher.unblock();
         execvp(my_argv[optind], my_argv+optind);
