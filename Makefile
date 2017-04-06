@@ -38,3 +38,6 @@ logp: $(PROGOBJS)
 cmd/*.o: inc/logp/cmd/*.h
 
 main.o: _buildinfo.h inc/logp/cmd/*.h
+
+logp_preload.so: logp_preload.cpp
+	$(CXX) $(CXXFLAGS) $(INC) -shared -fvisibility=hidden -o $@ logp_preload.cpp -ldl
