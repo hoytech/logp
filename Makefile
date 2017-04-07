@@ -42,5 +42,5 @@ main.o: _buildinfo.h inc/logp/cmd/*.h
 logp_preload.so: logp_preload.cpp
 	$(CXX) $(CXXFLAGS) -shared -fvisibility=hidden -o $@ logp_preload.cpp -ldl
 
-ev.o: ev.c inc/libev/*.c inc/libev/*.h
-	$(CC) $(OPT) $(INC) -fPIC -c $< -o $@
+ev.o: ev.cpp inc/libev/*.c inc/libev/*.h
+	$(CXX) -std=c++11 -w $(OPT) -Iinc/libev/ -fPIC -c $< -o $@
