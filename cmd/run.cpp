@@ -12,6 +12,7 @@
 #include <fstream>
 #include <memory>
 #include <thread>
+#include <unordered_map>
 
 #include "mapbox/variant.hpp"
 #include "nlohmann/json.hpp"
@@ -294,6 +295,9 @@ void run::execute() {
     int wait_status = 0;
     struct rusage resource_usage = {};
 
+    uint64_t next_evpid = 1;
+    std::unordered_map<int, uint64_t> pid_to_evpid;
+
     while (1) {
         auto mv = cmd_run_queue.shift();
 
@@ -350,11 +354,19 @@ void run::execute() {
             }
         },
         [&](run_msg_proc_started &m){
-            nlohmann::json body = {{ "ty", "proc-start" }, { "at", m.timestamp }, { "da", m.data }};
+            auto evpid = next_evpid++;
+            pid_to_evpid[m.data["pid"]] = evpid;
+            m.data["evpid"] = evpid;
+            m.data["what"] = "start";
+            nlohmann::json body = {{ "ty", "proc" }, { "at", m.timestamp }, { "da", m.data }};
             curr_event.add(body);
         },
         [&](run_msg_proc_exited &m){
-            nlohmann::json body = {{ "ty", "proc-exit" }, { "at", m.timestamp }, { "da", m.data }};
+            if (pid_to_evpid.count(m.data["pid"])) {
+                m.data["evpid"] = pid_to_evpid[m.data["pid"]];
+            }
+            m.data["what"] = "end";
+            nlohmann::json body = {{ "ty", "proc" }, { "at", m.timestamp }, { "da", m.data }};
             curr_event.add(body);
         }
         );
