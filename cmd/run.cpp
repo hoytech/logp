@@ -290,7 +290,7 @@ void run::execute() {
         }
 
         {
-            nlohmann::json body = {{ "ty", "cmd" }, { "st", start_timestamp }, { "da", data }, { "hb", ::conf.heartbeat_interval }};
+            nlohmann::json body = {{ "ty", "cmd" }, { "st", start_timestamp }, { "da", data }, { "hb", conf.get_uint64("run.heartbeat", 5000000) }};
             curr_event.start(body);
         }
     }

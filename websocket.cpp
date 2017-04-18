@@ -141,19 +141,22 @@ void request::handle(nlohmann::json &body, worker *w) {
 
 
 void worker::setup() {
-    size_t dash_pos = ::conf.apikey.find('-');
+    std::string apikey = conf.get_str("apikey", "");
+    if (!apikey.size()) throw logp::error("unable to find 'apikey' parameter in config");
+
+    size_t dash_pos = apikey.find('-');
     if (dash_pos == std::string::npos) throw logp::error("unable to find - in apikey");
 
-    std::string env_id = ::conf.apikey.substr(0, dash_pos);
-    token = ::conf.apikey.substr(dash_pos + 1);
+    std::string env_id = apikey.substr(0, dash_pos);
+    token = apikey.substr(dash_pos + 1);
 
-    std::string endpoint = ::conf.endpoint;
+    std::string endpoint = conf.get_str("endpoint", "wss://ws.logperiodic.com/ws/");
     if (endpoint.back() != '/') endpoint += "/";
     endpoint += env_id;
 
     uri = endpoint;
 
-    if (::conf.tls_no_verify) tls_no_verify = true;
+    tls_no_verify = conf.get_bool("tls_no_verify", false);
 
     int rc = pipe(activity_pipe);
     if (rc) throw logp::error("unable to create pipe: ", strerror(errno));

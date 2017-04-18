@@ -14,6 +14,7 @@
 #include "logp/cmd/ps.h"
 #include "logp/cmd/ping.h"
 #include "logp/cmd/get.h"
+#include "logp/cmd/config.h"
 
 
 logp::config conf;
@@ -41,9 +42,10 @@ void usage() {
         "    --help            The message you are reading now\n"
         "\n"
         "  Commands:\n"
-        "    run    Execute the given command, upload information\n"
-        "    ping   Test your apikey works, check latency to LP servers\n"
-        "    ps     See what is currently running, follow new runs\n"
+        "    run     Execute the given command, upload information\n"
+        "    ping    Test your apikey works, check latency to LP servers\n"
+        "    config  Dumps the current config to standard output\n"
+        "    ps      See what is currently running, follow new runs\n"
         << std::endl;
     exit(1);
 }
@@ -127,21 +129,6 @@ int main(int argc, char **argv) {
 
     // Verify necessary settings
 
-    if (!conf.endpoint.size()) {
-        PRINT_ERROR << "No 'endpoint' parameter found in config file";
-        usage();
-    }
-
-    if (!conf.apikey.size()) {
-        PRINT_ERROR << "No 'apikey' parameter found in config file";
-        usage();
-    }
-
-    if (conf.apikey.size() < 3 || conf.apikey.find('-') == std::string::npos) {
-        PRINT_ERROR << "apikey has incorrect format";
-        usage();
-    }
-
     if (optind >= argc) {
         PRINT_ERROR << "Expected a command, ie 'logp run sleep 10'";
         usage();
@@ -162,6 +149,8 @@ int main(int argc, char **argv) {
         c = new logp::cmd::ping();
     } else if (command == "get") {
         c = new logp::cmd::get();
+    } else if (command == "config") {
+        c = new logp::cmd::config();
     }
 
     if (c) {
