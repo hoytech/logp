@@ -98,6 +98,7 @@ bool load_config_file(std::string path, config &c) {
         exit(1);
     }
 
+    c.file = path;
     return true;
 }
 
@@ -148,6 +149,27 @@ uint64_t config::get_uint64(std::string name, uint64_t default_val) {
 
     if (!node->is_string()) throw logp::error("unexpected value for config '", name, "': ", *node);
     return std::stoull(node->get<std::string>());
+}
+
+
+std::vector<std::string> config::get_strvec(std::string name) {
+    auto *node = get_node(name, tree);
+
+    std::vector<std::string> output;
+
+    if (node) {
+        if (node->is_string()) {
+            output.push_back(node->get<std::string>());
+        } else if (node->is_array()) {
+            for (auto &s : *node) {
+                output.push_back(s.get<std::string>());
+            }
+        } else {
+            throw logp::error("unexpected value for config '", name, "': ", *node);
+        }
+    }
+
+    return output;
 }
 
 

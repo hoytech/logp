@@ -2,6 +2,7 @@
 #include <string.h>
 #include <errno.h>
 #include <pwd.h>
+#include <fnmatch.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -280,11 +281,27 @@ void run::execute() {
             data["pid"] = fork_ret;
             data["ppid"] = ppid;
 
-            for (char **envp = environ; *envp; envp++) {
-                std::string env_kv = std::string(*envp);
-                auto equal_sign_pos = env_kv.find_first_of('=');
-                if (equal_sign_pos != std::string::npos) {
-                    data["env"][env_kv.substr(0, equal_sign_pos)] = env_kv.substr(equal_sign_pos+1);
+            auto vars_to_capture = conf.get_strvec("run.env");
+
+            if (vars_to_capture.size()) {
+                for (char **envp = environ; *envp; envp++) {
+                    std::string env_kv = std::string(*envp);
+
+                    auto equal_sign_pos = env_kv.find_first_of('=');
+                    if (equal_sign_pos == std::string::npos) continue;
+
+                    std::string env_k = env_kv.substr(0, equal_sign_pos);
+
+                    bool match = false;
+
+                    for (auto v : vars_to_capture) {
+                        if (::fnmatch(v.c_str(), env_k.c_str(), 0) == 0) {
+                            match = true;
+                            break;
+                        }
+                    }
+
+                    if (match) data["env"][env_k] = env_kv.substr(equal_sign_pos+1);
                 }
             }
         }
