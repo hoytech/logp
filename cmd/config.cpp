@@ -36,6 +36,7 @@ const char *config::usage() {
 }
 
 void config::execute() {
+    std::cout << "Loaded config from file: " << conf.file << "\n\n";
     std::cout << conf.tree.dump(4) << std::endl;
 }
 

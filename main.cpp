@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <iostream>
 #include <string>
@@ -125,6 +126,11 @@ int main(int argc, char **argv) {
     }
 
     if (!config_loaded) config_loaded = logp::load_config_file("/etc/logp.conf", conf);
+
+
+    if (getenv("LOGP_APIKEY")) {
+        conf.tree["apikey"] = std::string(getenv("LOGP_APIKEY"));
+    }
 
 
     // Verify necessary settings

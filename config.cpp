@@ -85,11 +85,9 @@ nlohmann::json try_parse(std::ifstream &file) {
 bool load_config_file(std::string path, config &c) {
     std::ifstream file;
 
-    try {
-        file.open(path);
-    } catch (std::exception &e) {
-        return false;
-    }
+    file.open(path);
+
+    if (!file.is_open()) return false;
 
     try {
         c.tree = try_parse(file);
