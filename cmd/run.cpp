@@ -279,6 +279,14 @@ void run::execute() {
 
             data["pid"] = fork_ret;
             data["ppid"] = ppid;
+
+            for (char **envp = environ; *envp; envp++) {
+                std::string env_kv = std::string(*envp);
+                auto equal_sign_pos = env_kv.find_first_of('=');
+                if (equal_sign_pos != std::string::npos) {
+                    data["env"][env_kv.substr(0, equal_sign_pos)] = env_kv.substr(equal_sign_pos+1);
+                }
+            }
         }
 
         {
