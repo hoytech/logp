@@ -13,9 +13,11 @@ class run : public base {
     void execute();
 
   private:
-    bool opt_stderr = true;
-    bool opt_stdout = false;
-    bool opt_follow_fork = false;
+    std::string opt_tag;
+
+    bool config_stderr;
+    bool config_stdout;
+    bool config_follow;
 };
 
 }}

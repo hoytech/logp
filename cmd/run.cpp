@@ -34,9 +34,7 @@ namespace logp { namespace cmd {
 const char *run::usage() {
     static const char *u =
         "logp run [options] <command>\n"
-        "  --no-stderr    Do not collect stderr output\n"
-        "  --stdout       Collect stdout output\n"
-        "  -f / --fork    Follow forked processes\n"
+        "  -t <tag>    Add a tag to this job\n"
         "\n"
         "  <command>   This is a unix command, possibly including options\n"
     ;
@@ -44,31 +42,26 @@ const char *run::usage() {
     return u;
 }
 
-const char *run::getopt_string() { return "f"; }
+const char *run::getopt_string() { return "t:"; }
 
 struct option *run::get_long_options() {
     static struct option opts[] = {
-        {"no-stderr", no_argument, 0, 0},
-        {"stdout", no_argument, 0, 0},
-        {"fork", no_argument, 0, 'f'},
+        {"tag", required_argument, 0, 't'},
         {0, 0, 0, 0}
     };
 
     return opts;
 }
 
-void run::process_option(int arg, int option_index, char *) {
+void run::process_option(int arg, int, char *optarg) {
     switch (arg) {
       case 0:
-        if (strcmp(my_long_options[option_index].name, "no-stderr") == 0) {
-            opt_stderr = false;
-        } else if (strcmp(my_long_options[option_index].name, "stdout") == 0) {
-            opt_stdout = true;
-        }
         break;
 
-      case 'f':
-        opt_follow_fork = true;
+      case 't':
+        {
+            opt_tag = std::string(optarg);
+        }
         break;
     };
 }
@@ -106,6 +99,10 @@ void run::execute() {
         PRINT_ERROR << "Must provide a command after run, ie 'logp run sleep 10'";
         print_usage_and_exit();
     }
+
+    config_stderr = ::conf.get_bool("run.stderr", true);
+    config_stdout = ::conf.get_bool("run.stdout", false);
+    config_follow = ::conf.get_bool("run.follow", true);
 
 
     hoytech::protected_queue<run_msg> cmd_run_queue;
@@ -165,7 +162,7 @@ void run::execute() {
 
     sigwatcher.run();
     timer.run();
-    if (opt_follow_fork) preloadwatcher.run();
+    if (config_follow) preloadwatcher.run();
 
 
     logp::websocket::worker ws_worker;
@@ -177,7 +174,7 @@ void run::execute() {
     std::unique_ptr<logp::pipe_capturer> stderr_pipe_capturer;
     bool stderr_finished = false;
 
-    if (opt_stderr) {
+    if (config_stderr) {
         int fd = 2;
 
         stderr_pipe_capturer = std::unique_ptr<logp::pipe_capturer>(new logp::pipe_capturer(fd, timer,
@@ -200,7 +197,7 @@ void run::execute() {
     std::unique_ptr<logp::pipe_capturer> stdout_pipe_capturer;
     bool stdout_finished = false;
 
-    if (opt_stdout) {
+    if (config_stdout) {
         int fd = 1;
 
         stdout_pipe_capturer = std::unique_ptr<logp::pipe_capturer>(new logp::pipe_capturer(fd, timer,
@@ -234,7 +231,7 @@ void run::execute() {
         if (stderr_pipe_capturer) stderr_pipe_capturer->child();
         if (stdout_pipe_capturer) stdout_pipe_capturer->child();
 
-        if (opt_follow_fork) {
+        if (config_follow) {
             ::setenv("LOGP_SOCKET_PATH", preloadwatcher.get_socket_path().c_str(), 0);
             ::setenv("LD_PRELOAD", "./logp_preload.so", 0);
         }
@@ -304,6 +301,8 @@ void run::execute() {
                     if (match) data["env"][env_k] = env_kv.substr(equal_sign_pos+1);
                 }
             }
+
+            if (opt_tag.size()) data["tag"] = opt_tag;
         }
 
         {
