@@ -357,6 +357,9 @@ void run::execute() {
             auto evpid = next_evpid++;
             pid_to_evpid[m.data["pid"]] = evpid;
             m.data["evpid"] = evpid;
+            if (pid_to_evpid.count(m.data["ppid"])) {
+                m.data["evppid"] = pid_to_evpid[m.data["ppid"]];
+            }
             m.data["what"] = "start";
             nlohmann::json body = {{ "ty", "proc" }, { "at", m.timestamp }, { "da", m.data }};
             curr_event.add(body);
