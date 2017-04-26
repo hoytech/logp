@@ -120,6 +120,8 @@ int main(int argc, char **argv) {
         }
     }
 
+    if (!config_loaded) config_loaded = logp::load_config_file("./.logp.conf", conf);
+
     if (!config_loaded) {
         std::string file = logp::util::get_home_dir();
 
