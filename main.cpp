@@ -36,7 +36,8 @@ void usage() {
         "Usage: logp [global options] <command> [command options]\n"
         "\n"
         "  Global options:\n"
-        "    --config [file]   Use specificed config file\n"
+        "    --config [file]   Use specified config file\n"
+        "    --profile [name]  Profile to use from the config\n"
         "    --verbose/-v      More diagnostic messages on stderr\n"
         "    --quiet/-q        Fewer diagnostic messages on stderr\n"
         "    --version         Print logp version and exit\n"
@@ -67,11 +68,12 @@ int main(int argc, char **argv) {
         {"verbose", no_argument, 0, 'v'},
         {"quiet", no_argument, 0, 'q'},
         {"config", required_argument, 0, 'c'},
+        {"profile", required_argument, 0, 'p'},
         {0, 0, 0, 0}
     };
 
     optind = 1;
-    while ((arg = getopt_long(argc, argv, "+c:vq", long_options, &option_index)) != -1) {
+    while ((arg = getopt_long(argc, argv, "+c:p:vq", long_options, &option_index)) != -1) {
         switch (arg) {
           case '?':
           case 'h':
@@ -79,6 +81,10 @@ int main(int argc, char **argv) {
 
           case 'c':
             opt_config = std::string(optarg);
+            break;
+
+          case 'p':
+            conf.profile = std::string(optarg);
             break;
 
           case 'v':
@@ -127,6 +133,17 @@ int main(int argc, char **argv) {
 
     if (!config_loaded) config_loaded = logp::load_config_file("/etc/logp.conf", conf);
 
+    if (conf.profile.size()) {
+        if (!config_loaded) {
+            PRINT_ERROR << "Profile specified but no config file could be found";
+            exit(1);
+        }
+
+        if (!conf.tree.count("profile") || !conf.tree["profile"].count(conf.profile)) {
+            PRINT_ERROR << "Unable to find profile '" << conf.profile << "' in config file '" << conf.file << "'";
+            exit(1);
+        }
+    }
 
     if (getenv("LOGP_APIKEY")) {
         conf.tree["apikey"] = std::string(getenv("LOGP_APIKEY"));

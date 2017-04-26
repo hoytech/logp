@@ -102,6 +102,15 @@ bool load_config_file(std::string path, config &c) {
 
 
 
+nlohmann::json *config::get_node(std::string name) {
+    if (profile.size()) {
+        auto *res = get_node(name, tree["profile"][profile]);
+        if (res) return res;
+    }
+
+    return get_node(name, tree);
+}
+
 nlohmann::json *config::get_node(std::string name, nlohmann::json &j) {
     auto first_dot_pos = name.find_first_of('.');
     if (first_dot_pos == std::string::npos) {
@@ -132,7 +141,7 @@ bool config::get_bool(std::string name, bool default_val) {
 
 
 std::string config::get_str(std::string name, std::string default_val) {
-    auto *node = get_node(name, tree);
+    auto *node = get_node(name);
     if (!node) return default_val;
 
     if (!node->is_string()) throw logp::error("non-string value for config '", name, "': ", *node);
@@ -142,7 +151,7 @@ std::string config::get_str(std::string name, std::string default_val) {
 
 
 uint64_t config::get_uint64(std::string name, uint64_t default_val) {
-    auto *node = get_node(name, tree);
+    auto *node = get_node(name);
     if (!node) return default_val;
 
     if (!node->is_string()) throw logp::error("unexpected value for config '", name, "': ", *node);
@@ -151,7 +160,7 @@ uint64_t config::get_uint64(std::string name, uint64_t default_val) {
 
 
 std::vector<std::string> config::get_strvec(std::string name) {
-    auto *node = get_node(name, tree);
+    auto *node = get_node(name);
 
     std::vector<std::string> output;
 
