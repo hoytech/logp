@@ -15,7 +15,7 @@ namespace logp {
 struct config {
     nlohmann::json tree;
     std::string profile;
-    int verbosity = 0; // FIXME: doesn't really belong here
+    int verbosity = 0;
     std::string file;
 
     nlohmann::json *get_node(std::string name);
