@@ -126,7 +126,7 @@ void run::execute() {
     }
 
     config_stderr = ::conf.get_bool("run.stderr", true);
-    config_stdout = ::conf.get_bool("run.stdout", false);
+    config_stdout = ::conf.get_bool("run.stdout", true);
     config_follow = ::conf.get_bool("run.follow", true);
 
 
