@@ -68,6 +68,31 @@ void run::process_option(int arg, int, char *optarg) {
 
 
 
+std::string find_logp_preload() {
+    std::string path;
+
+    path = "/usr/logp/lib/logp_preload.so";
+    if (access(path.c_str(), R_OK) == 0) return path;
+
+    path = "/usr/local/logp/lib/logp_preload.so";
+    if (access(path.c_str(), R_OK) == 0) return path;
+
+    char cwd[1024];
+    if (!getcwd(cwd, sizeof(cwd))) {
+      PRINT_WARNING << "unable to getcwd(): " << strerror(errno);
+      return "";
+    }
+
+    path = cwd;
+    path += "/logp_preload.so";
+    if (access(path.c_str(), R_OK) == 0) return path;
+
+    PRINT_WARNING << "unable to find logp_preload.so";
+    return "";
+}
+
+
+
 struct run_msg_sigchld {
 };
 
@@ -233,11 +258,16 @@ void run::execute() {
 
         if (config_follow) {
             ::setenv("LOGP_SOCKET_PATH", preloadwatcher.get_socket_path().c_str(), 0);
+            const char *logp_preload_env_var;
+            std::string logp_preload_path = find_logp_preload();
+
 #ifdef __APPLE__
-            ::setenv("DYLD_INSERT_LIBRARIES", "./logp_preload.so", 0);
+            logp_preload_env_var = "DYLD_INSERT_LIBRARIES";
 #else
-            ::setenv("LD_PRELOAD", "./logp_preload.so", 0);
+            logp_preload_env_var = "LD_PRELOAD";
 #endif
+
+            if (logp_preload_path.size()) ::setenv(logp_preload_env_var, logp_preload_path.c_str(), 0);
         }
 
         sigwatcher.unblock();
