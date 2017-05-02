@@ -6,6 +6,10 @@
 #include <sys/un.h>
 #include <fcntl.h>
 
+#ifdef __APPLE__
+#include <crt_externs.h>
+#endif
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -24,6 +28,12 @@ static std::vector<std::string> get_argv() {
     std::string arg;
     while (std::getline(infile, arg, '\0')) {
         output.push_back(arg);
+    }
+#elif __APPLE__
+    char ***argvp = _NSGetArgv();
+    int *argcp = _NSGetArgc();
+    if (argvp != nullptr && argcp != nullptr) {
+        for (int i = 0; i < *argcp; i++) output.push_back((*argvp)[i]);
     }
 #endif
 

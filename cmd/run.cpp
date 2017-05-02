@@ -233,7 +233,11 @@ void run::execute() {
 
         if (config_follow) {
             ::setenv("LOGP_SOCKET_PATH", preloadwatcher.get_socket_path().c_str(), 0);
+#ifdef __APPLE__
+            ::setenv("DYLD_INSERT_LIBRARIES", "./logp_preload.so", 0);
+#else
             ::setenv("LD_PRELOAD", "./logp_preload.so", 0);
+#endif
         }
 
         sigwatcher.unblock();

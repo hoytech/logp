@@ -8,6 +8,12 @@
 #include "nlohmann/json.hpp"
 
 
+extern "C" {
+
+extern char **environ;
+
+};
+
 
 namespace logp {
 

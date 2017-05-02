@@ -3,3 +3,4 @@
 *.so
 dist/
 _buildinfo.h
+logp_preload.so.dSYM/
