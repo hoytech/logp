@@ -15,6 +15,7 @@
 #include "logp/cmd/ps.h"
 #include "logp/cmd/ping.h"
 #include "logp/cmd/get.h"
+#include "logp/cmd/cat.h"
 #include "logp/cmd/config.h"
 
 
@@ -174,6 +175,8 @@ int main(int argc, char **argv) {
         c = new logp::cmd::ping();
     } else if (command == "get") {
         c = new logp::cmd::get();
+    } else if (command == "cat") {
+        c = new logp::cmd::cat();
     } else if (command == "config") {
         c = new logp::cmd::config();
     }
