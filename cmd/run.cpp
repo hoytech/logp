@@ -59,9 +59,7 @@ void run::process_option(int arg, int, char *optarg) {
         break;
 
       case 't':
-        {
-            opt_tag = std::string(optarg);
-        }
+        opt_tag = std::string(optarg);
         break;
     };
 }

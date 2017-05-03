@@ -50,13 +50,12 @@ void get::execute() {
 
     if (my_argv[optind]) {
         query = nlohmann::json::parse(my_argv[optind]);
-    } else {
-        PRINT_ERROR << "Must provide a query param";
-        print_usage_and_exit();
-    }
 
-    if (my_argv[optind+1]) {
-        state = nlohmann::json::parse(my_argv[optind+1]);
+        if (my_argv[optind+1]) {
+            state = nlohmann::json::parse(my_argv[optind+1]);
+        }
+    } else {
+        query = nlohmann::json({ { "select", "entry" }, { "from", nlohmann::json::array({ "ev", 0, nullptr }) } });
     }
 
     logp::websocket::worker ws_worker;

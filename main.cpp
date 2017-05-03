@@ -37,12 +37,13 @@ void usage() {
         "Usage: logp [global options] <command> [command options]\n"
         "\n"
         "  Global options:\n"
-        "    --config [file]   Use specified config file\n"
-        "    --profile [name]  Profile to use from the config\n"
-        "    --verbose/-v      More diagnostic messages on stderr\n"
-        "    --quiet/-q        Fewer diagnostic messages on stderr\n"
-        "    --version         Print logp version and exit\n"
-        "    --help            The message you are reading now\n"
+        "    --config [file]    Use specified config file\n"
+        "    --profile [name]   Profile to use from the config\n"
+        "    --apikey/-a [key]  API key to use\n"
+        "    --verbose/-v       More diagnostic messages on stderr\n"
+        "    --quiet/-q         Fewer diagnostic messages on stderr\n"
+        "    --version          Print logp version and exit\n"
+        "    --help             The message you are reading now\n"
         "\n"
         "  Commands:\n"
         "    run     Execute the given command, upload information\n"
@@ -62,6 +63,7 @@ int main(int argc, char **argv) {
     int arg, option_index;
 
     std::string opt_config;
+    std::string opt_apikey;
 
     struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -70,11 +72,12 @@ int main(int argc, char **argv) {
         {"quiet", no_argument, 0, 'q'},
         {"config", required_argument, 0, 'c'},
         {"profile", required_argument, 0, 'p'},
+        {"apikey", required_argument, 0, 'a'},
         {0, 0, 0, 0}
     };
 
     optind = 1;
-    while ((arg = getopt_long(argc, argv, "+c:p:vq", long_options, &option_index)) != -1) {
+    while ((arg = getopt_long(argc, argv, "+c:p:a:vq", long_options, &option_index)) != -1) {
         switch (arg) {
           case '?':
           case 'h':
@@ -86,6 +89,10 @@ int main(int argc, char **argv) {
 
           case 'p':
             conf.profile = std::string(optarg);
+            break;
+
+          case 'a':
+            opt_apikey = std::string(optarg);
             break;
 
           case 'v':
@@ -148,7 +155,9 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (getenv("LOGP_APIKEY")) {
+    if (opt_apikey.size()) {
+        conf.tree["apikey"] = opt_apikey;
+    } else if (getenv("LOGP_APIKEY")) {
         conf.tree["apikey"] = std::string(getenv("LOGP_APIKEY"));
     }
 
