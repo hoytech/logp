@@ -50,6 +50,7 @@ void usage() {
         "    ping    Test your apikey works, check latency to LP servers\n"
         "    config  Dumps the current config to standard output\n"
         "    ps      See what is currently running, follow new runs\n"
+        "    cat     Print stdout/stderr of an event\n"
         << std::endl;
     exit(1);
 }
