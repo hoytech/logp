@@ -2,7 +2,6 @@
 
 * says "unable to communicate with server" if the process won't die
 * configurable timeouts
-* send logp version info to eventstore
 * config file examples
 * instead of print "<1s" why not print "231ms"?
 * if an event gets timed out due to heartbeat, but logp is still running (perhaps it was stopped) then it

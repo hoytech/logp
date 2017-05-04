@@ -16,6 +16,8 @@
 #include "logp/config.h"
 #include "logp/util.h"
 
+#include "_buildinfo.h"
+
 
 #ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
 #  error "OpenSSL 1.0.2+ required for X509_check_host() (see https://github.com/hoytech/logp/issues/1)"
@@ -221,7 +223,7 @@ void worker::run_event_loop() {
 
     {
         logp::websocket::request r;
-        r.op = logp::websocket::request_ini{ {{ "tk", token }, { "prot", 2 }} };
+        r.op = logp::websocket::request_ini{ {{ "tk", token }, { "prot", 2 }, { "ver", LOGP_VERSION }} };
         internal_send_request(c, r);
     }
 
