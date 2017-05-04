@@ -1,8 +1,4 @@
-! unify config file and top-level command-line options: need to parse config file first, then apply options
 ! save entries to local DB so can be uploaded later
-! gather stderr/stdout
-  ! rate limit their upload
-  * tail/cat
 
 * says "unable to communicate with server" if the process won't die
 * configurable timeouts
@@ -14,7 +10,7 @@
     logp: warning: error from server for hrt op: not expecting heartbeat for this event id
     logp: warning: error from server for add op: event already ended
     logp: error: was unable to communicate with log periodic server
+* multiple tags
 
 ? collect cwd
-? tags
 ? windows support
