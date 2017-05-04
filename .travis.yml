@@ -5,6 +5,18 @@ dist: trusty
 compiler:
   - gcc
 
+
+matrix:
+    include:
+    - env: CXX=g++-5 CC=gcc-5
+      addons:
+        apt:
+          packages:
+            - g++-5
+          sources: &sources
+            - ubuntu-toolchain-r-test
+
+
 before_script:
   - git submodule update --init
 
