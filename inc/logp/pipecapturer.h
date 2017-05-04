@@ -53,7 +53,7 @@ class pipe_capturer {
                 buf.resize(ret);
 
                 write_again:
-                ssize_t writeret = ::write(2, buf.data(), buf.size());
+                ssize_t writeret = ::write(fd, buf.data(), buf.size());
                 if (writeret <= 0) {
                     if (ret == -1 && errno == EINTR) goto write_again;
                     pipe_closed();

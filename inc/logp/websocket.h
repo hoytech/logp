@@ -88,6 +88,9 @@ class worker {
     worker() {
         setup();
     }
+    ~worker() {
+        t.detach(); // FIXME: worker can't be properly destroyed yet
+    }
 
     void push_move_new_request(request_base r);
     void push_move_new_request(request &r);
