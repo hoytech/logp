@@ -1,3 +1,14 @@
+0.2.0  2017-05-04
+  * Implements logperiodic protocol version 2
+  * Solaris support (thanks Adrian)
+  * Tracks subprocesses on linux (and partially OS X)
+  * Supports uploading binary (non-UTF-8) data
+  * "logp run" also captures stdout by default
+  * "logp cat"
+  * Supports capturing environment variables
+  * LOGP_APIKEY environment variable
+  * Lots of bugfixes and minor improvements
+
 0.1.3  2017-03-21
   * "logp run" collects standard error by default. You can disable
     this with --no-stderr
