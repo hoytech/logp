@@ -56,6 +56,10 @@ uint64_t timeval_to_usecs(struct timeval &);
 
 
 
+std::string utf8_encode_binary(std::string &input);
+std::string utf8_decode_binary(std::string &input);
+
+
 extern bool use_ansi_colours;
 
 std::string colour_bold(std::string s);

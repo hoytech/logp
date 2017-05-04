@@ -55,6 +55,7 @@ void cat::process_option(int arg, int, char *) {
 
 void do_output(nlohmann::json &j) {
     std::string txt = j["da"]["txt"];
+    txt = util::utf8_decode_binary(txt);
 
     if (j["ty"] == "stdout") {
         std::cout << txt;
