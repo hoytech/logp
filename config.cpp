@@ -104,7 +104,7 @@ bool load_config_file(std::string path, config &c) {
 
 nlohmann::json *config::get_node(std::string name) {
     if (profile.size()) {
-        auto *res = get_node(name, tree["profile"][profile]);
+        auto *res = get_node(name, tree["profiles"][profile]);
         if (res) return res;
     }
 

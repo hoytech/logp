@@ -37,18 +37,20 @@ void usage() {
         "Usage: logp [global options] <command> [command options]\n"
         "\n"
         "  Global options:\n"
-        "    --config [file]    Use specified config file\n"
-        "    --profile [name]   Profile to use from the config\n"
-        "    --apikey/-a [key]  API key to use\n"
-        "    --verbose/-v       More diagnostic messages on stderr\n"
-        "    --quiet/-q         Fewer diagnostic messages on stderr\n"
-        "    --version          Print logp version and exit\n"
-        "    --help             The message you are reading now\n"
+        "    --config/-c [file]   Use specified config file\n"
+        "    --profile/-p [name]  Profile to use from the config\n"
+        "    --apikey/-a [key]    API key to use\n"
+        "    --verbose/-v         More diagnostic messages on stderr\n"
+        "    --quiet/-q           Fewer diagnostic messages on stderr\n"
+        "    --version            Print logp version and exit\n"
+        "    --help               The message you are reading now\n"
+        "\n"
+        "  Environment variables:\n"
+        "    LOGP_APIKEY     API key to use (-a takes precedence)\n"
         "\n"
         "  Commands:\n"
         "    run     Execute the given command, upload information\n"
         "    ping    Test your apikey works, check latency to LP servers\n"
-        "    config  Dumps the current config to standard output\n"
         "    ps      See what is currently running, follow new runs\n"
         "    cat     Print stdout/stderr of an event\n"
         << std::endl;
@@ -150,7 +152,7 @@ int main(int argc, char **argv) {
             exit(1);
         }
 
-        if (!conf.tree.count("profile") || !conf.tree["profile"].count(conf.profile)) {
+        if (!conf.tree.count("profiles") || !conf.tree["profiles"].count(conf.profile)) {
             PRINT_ERROR << "Unable to find profile '" << conf.profile << "' in config file '" << conf.file << "'";
             exit(1);
         }
