@@ -38,9 +38,13 @@ if ($cmd eq 'dist-linux') {
     description => 'Command-line client for Log Periodic',
   });
 
-  sys(q{apt-ftparchive packages dist/ > dist/Packages});
-  sys(q{apt-ftparchive release dist/ > dist/Release});
-  sys(q{gpg -ab < dist/Release > dist/Release.gpg});
+  sys(q{mkdir dist/amd64});
+  sys(q{mv dist/*.deb dist/amd64});
+
+  sys(q{dpkg-scanpackages dist/amd64/ > dist/amd64/Packages});
+  sys(q{apt-ftparchive release dist/amd64/ > dist/amd64/Release});
+  sys(q{gpg -ab < dist/amd64/Release > dist/amd64/Release.gpg});
+
   sys(q{gpg --export -a 'Doug Hoyte' > dist/logp-gpg-key.public});
   sys(q{createrepo --database dist/});
 } elsif ($cmd eq 'dist-macos') {
