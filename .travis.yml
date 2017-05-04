@@ -2,20 +2,15 @@ language: c
 sudo: false
 dist: trusty
 
-compiler:
-  - gcc
+addons:
+  apt:
+    packages:
+      - g++-5
+      - libssl-dev
+    sources: &sources
+      - ubuntu-toolchain-r-test
 
-
-matrix:
-    include:
-    - env: CXX=g++-5 CC=gcc-5
-      addons:
-        apt:
-          packages:
-            - g++-5
-          sources: &sources
-            - ubuntu-toolchain-r-test
-
+env: CXX=g++-5 CC=gcc-5
 
 before_script:
   - git submodule update --init
