@@ -1,3 +1,6 @@
+0.2.1  2017-05-05
+  * Reimplement preload hook to be more portable
+
 0.2.0  2017-05-04
   * Implements logperiodic protocol version 2
   * Solaris support (thanks Adrian)
