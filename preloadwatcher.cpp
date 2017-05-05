@@ -102,11 +102,56 @@ void preload_connection::readable() {
 
     buffer += std::string(tmpbuf, (size_t)ret);
 
-    if (buffer.size() && buffer[buffer.size() - 1] == '\n') {
-        // NOTE: assumes client only sends 1 line of data (which is true for now)
-        buffer.resize(buffer.size() - 1);
+    if (buffer.size() >= sizeof(size_t)) {
+        size_t msg_len;
+        memcpy(&msg_len, buffer.data(), sizeof(size_t));
+        if (buffer.size() < msg_len) return;
 
-        auto j = nlohmann::json::parse(buffer);
+        nlohmann::json j;
+
+        std::string payload = buffer.substr(sizeof(size_t));
+        size_t curr_offset = 0;
+
+        while(1) {
+            std::string type_str = payload.substr(curr_offset, sizeof(uint16_t));
+            if (type_str.size() != sizeof(uint16_t)) break;
+            uint16_t field_type;
+            memcpy(&field_type, type_str.data(), sizeof(uint16_t));
+            curr_offset += sizeof(uint16_t);
+
+            std::string len_str = payload.substr(curr_offset, sizeof(size_t));
+            if (len_str.size() != sizeof(size_t)) break;
+            size_t field_len;
+            memcpy(&field_len, len_str.data(), sizeof(size_t));
+            curr_offset += sizeof(size_t);
+
+            std::string field = payload.substr(curr_offset, field_len);
+            if (field.size() != field_len) break;
+            curr_offset += field_len;
+
+            if (field_type == 1) {
+                if (field.size() == sizeof(pid_t)) {
+                    pid_t pid;
+                    memcpy(&pid, field.data(), sizeof(pid_t));
+                    j["pid"] = pid;
+                }
+            } else if (field_type == 2) {
+                if (field.size() == sizeof(pid_t)) {
+                    pid_t pid;
+                    memcpy(&pid, field.data(), sizeof(pid_t));
+                    j["ppid"] = pid;
+                }
+            } else if (field_type == 3) {
+                size_t i = 0, pos = field.find('\0');
+                while (pos != std::string::npos) {
+                    j["argv"].push_back(field.substr(i, pos-i));
+                    i = ++pos;
+                    pos = field.find('\0', pos);
+
+                    if (pos == std::string::npos) j["argv"].push_back(field.substr(i, field.length()));
+                }
+            }
+        }
 
         if (j.count("pid")) pid = j["pid"];
 
