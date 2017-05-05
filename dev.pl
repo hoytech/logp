@@ -11,11 +11,12 @@ my $cmd = shift || die "need command";
 my $version;
 
 if ($cmd =~ /^dist-/ || $cmd =~ /^upload-/) {
-  $version = LogPeriodic::BuildLib::get_version('logp');
+  $version = $ENV{VERSION_OVERRIDE} // LogPeriodic::BuildLib::get_version('logp');
   ok_to_release($version);
 }
 
 if ($cmd eq 'dist-linux') {
+  sys(q{rm -rf dist/});
   sys(q{make clean}) unless $ENV{NO_CLEAN};
   sys(q{make -j 4 XCXXFLAGS="-DSSL_PIN_CAFILE" XLDFLAGS="-Wl,-rpath=/usr/logp/lib/ -static-libgcc -static-libstdc++ -s" });
   sys(q{strip logp logp_preload.so});
@@ -41,8 +42,8 @@ if ($cmd eq 'dist-linux') {
   sys(q{mkdir dist/amd64});
   sys(q{mv dist/*.deb dist/amd64});
 
-  sys(q{dpkg-scanpackages dist/amd64/ > dist/amd64/Packages});
-  sys(q{apt-ftparchive release dist/amd64/ > dist/amd64/Release});
+  sys(q{cd dist ; dpkg-scanpackages amd64/ > amd64/Packages});
+  sys(q{cd dist ; apt-ftparchive release amd64/ > amd64/Release});
   sys(q{gpg -ab < dist/amd64/Release > dist/amd64/Release.gpg});
 
   sys(q{gpg --export -a 'Doug Hoyte' > dist/logp-gpg-key.public});
@@ -55,7 +56,7 @@ if ($cmd eq 'dist-linux') {
   sys(qq{ tar -czf dist/logp-$version.bottle.tar.gz logp });
 } elsif ($cmd eq 'upload-s3') {
   sys(q{aws s3 sync --delete dist/ s3://logp/});
-  sys(qq{aws s3 cp s3://logp/logp_${version}_amd64.deb s3://logp/logp_latest_amd64.deb});
+  sys(qq{aws s3 cp s3://logp/amd64/logp_${version}_amd64.deb s3://logp/logp_latest_amd64.deb});
   sys(qq{aws s3 cp s3://logp/logp-${version}-1.x86_64.rpm s3://logp/logp-latest.x86_64.rpm});
 } else {
   die "unknown command: $cmd";
