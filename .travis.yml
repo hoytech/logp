@@ -16,6 +16,5 @@ addons:
 env: CXX=g++-5 CC=gcc-5
 
 script:
-  - logp ping -c 5
   - git submodule update --init
-  - make
+  - logp run make
