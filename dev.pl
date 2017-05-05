@@ -39,16 +39,22 @@ if ($cmd eq 'dist-linux') {
     description => 'Command-line client for Log Periodic',
   });
 
+  ## Deb distribution
+
   sys(q{mkdir dist/amd64});
   sys(q{mv dist/*.deb dist/amd64});
-
   sys(q{cd dist ; dpkg-scanpackages amd64/ > amd64/Packages});
   sys(q{cd dist ; apt-ftparchive release amd64/ > amd64/Release});
-
   sys(q{gpg -a -b -u 'Log Periodic Ltd.' < dist/amd64/Release > dist/amd64/Release.gpg});
-  sys(q{gpg --export -a 'Log Periodic Ltd.' > dist/logp-gpg-key.public});
 
+  ## RPM distribution
+
+  sys(qq{rpm --define '_gpg_name Log Periodic Ltd.' --addsign dist/logp-${version}-1.x86_64.rpm});
   sys(q{createrepo --database dist/});
+
+  ## Include public key
+
+  sys(q{gpg --export -a 'Log Periodic Ltd.' > dist/logp-gpg-key.public});
 } elsif ($cmd eq 'dist-macos') {
   sys(q{make clean});
   ## FIXME: figure out how to pin CAFILE for Mac OS
