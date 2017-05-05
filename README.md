@@ -66,6 +66,8 @@ In order to use the `logp` client, you first need to get an API key from the Log
 
     apikey: zrwoszvidAGW09sfiCr3Ii-YIvyeW1oxEMv8lKgyJVhW3
 
+You can also provide the API key with the `-a` command-line switch, or the `LOGP_APIKEY` environment variable.
+
 For full details on configuring the client, please see [our online documentation](https://logperiodic.com/docs#configure).
 
 
