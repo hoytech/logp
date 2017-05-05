@@ -44,9 +44,10 @@ if ($cmd eq 'dist-linux') {
 
   sys(q{cd dist ; dpkg-scanpackages amd64/ > amd64/Packages});
   sys(q{cd dist ; apt-ftparchive release amd64/ > amd64/Release});
-  sys(q{gpg -ab < dist/amd64/Release > dist/amd64/Release.gpg});
 
-  sys(q{gpg --export -a 'Doug Hoyte' > dist/logp-gpg-key.public});
+  sys(q{gpg -a -b -u 'Log Periodic Ltd.' < dist/amd64/Release > dist/amd64/Release.gpg});
+  sys(q{gpg --export -a 'Log Periodic Ltd.' > dist/logp-gpg-key.public});
+
   sys(q{createrepo --database dist/});
 } elsif ($cmd eq 'dist-macos') {
   sys(q{make clean});
