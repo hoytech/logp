@@ -55,6 +55,7 @@ if ($cmd eq 'dist-linux') {
   ## Include public key
 
   sys(q{gpg --export -a 'Log Periodic Ltd.' > dist/logp-gpg-key.public});
+  sys(q{cp dist/logp-gpg-key.public dist/logp-public.key});
 } elsif ($cmd eq 'dist-macos') {
   sys(q{make clean});
   ## FIXME: figure out how to pin CAFILE for Mac OS
