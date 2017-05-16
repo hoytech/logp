@@ -8,7 +8,7 @@
 #include "nlohmann/json.hpp"
 #include "hoytech/protected_queue.h"
 
-#include "logp/cmd/cat.h"
+#include "logp/cmd/tail.h"
 #include "logp/websocket.h"
 #include "logp/util.h"
 
@@ -19,18 +19,18 @@ namespace logp { namespace cmd {
 uint64_t opt_event_id = 0;
 
 
-const char *cat::usage() {
+const char *tail::usage() {
     static const char *u =
-        "logp cat [options]\n"
-        "  -e/--event [event id]   Event to cat"
+        "logp tail [options]\n"
+        "  -e/--event [event id]   Event to tail"
     ;
 
     return u;
 }
 
-const char *cat::getopt_string() { return "e:"; }
+const char *tail::getopt_string() { return "e:"; }
 
-struct option *cat::get_long_options() {
+struct option *tail::get_long_options() {
     static struct option opts[] = {
         {"event", required_argument, 0, 'e'},
         {0, 0, 0, 0}
@@ -39,7 +39,7 @@ struct option *cat::get_long_options() {
     return opts;
 }
 
-void cat::process_option(int arg, int, char *) {
+void tail::process_option(int arg, int, char *) {
     switch (arg) {
       case 0:
         break;
@@ -66,26 +66,26 @@ void do_output(nlohmann::json &j) {
 
 
 
-struct cat_msg_end_seen {};
+struct tail_msg_end_seen {};
 
-struct cat_msg_monitoring {};
+struct tail_msg_monitoring {};
 
-struct cat_msg_entry {
+struct tail_msg_entry {
     nlohmann::json entry;
 };
 
-using cat_msg = mapbox::util::variant<cat_msg_end_seen, cat_msg_monitoring, cat_msg_entry>;
+using tail_msg = mapbox::util::variant<tail_msg_end_seen, tail_msg_monitoring, tail_msg_entry>;
 
 
 
-void cat::execute() {
+void tail::execute() {
     if (!opt_event_id) {
         PRINT_ERROR << "Must provide an event id with -e";
         print_usage_and_exit();
     }
 
 
-    hoytech::protected_queue<cat_msg> cmd_cat_queue;
+    hoytech::protected_queue<tail_msg> cmd_tail_queue;
     std::vector<nlohmann::json> entries;
     bool end_seen = false, monitoring = false;
 
@@ -109,28 +109,28 @@ void cat::execute() {
 
         r.on_entry = [&](nlohmann::json &res) {
             if (res.count("en")) {
-                cmd_cat_queue.push_move(cat_msg_end_seen{});
+                cmd_tail_queue.push_move(tail_msg_end_seen{});
             } else {
-                cmd_cat_queue.push_move(cat_msg_entry{std::move(res)});
+                cmd_tail_queue.push_move(tail_msg_entry{std::move(res)});
             }
         };
         r.on_monitoring = [&]{
-            cmd_cat_queue.push_move(cat_msg_monitoring{});
+            cmd_tail_queue.push_move(tail_msg_monitoring{});
         };
 
         ws_worker.push_move_new_request(r);
     }
 
     while (1) {
-        auto mv = cmd_cat_queue.shift();
+        auto mv = cmd_tail_queue.shift();
 
         mv.match(
-            [&](cat_msg_end_seen &){
+            [&](tail_msg_end_seen &){
                 end_seen = true;
 
                 if (monitoring) exit(0);
             },
-            [&](cat_msg_monitoring &){
+            [&](tail_msg_monitoring &){
                 monitoring = true;
 
                 std::sort(entries.begin(), entries.end(), [](const nlohmann::json &a, const nlohmann::json &b){
@@ -143,7 +143,7 @@ void cat::execute() {
 
                 if (end_seen) exit(0);
             },
-            [&](cat_msg_entry &e){
+            [&](tail_msg_entry &e){
                 if (monitoring) {
                     do_output(e.entry);
                 } else {

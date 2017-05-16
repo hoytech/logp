@@ -4,7 +4,7 @@
 
 namespace logp { namespace cmd {
 
-class cat : public base {
+class tail : public base {
   public:
     const char *usage();
     const char *getopt_string();

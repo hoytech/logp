@@ -15,7 +15,7 @@
 #include "logp/cmd/ps.h"
 #include "logp/cmd/ping.h"
 #include "logp/cmd/get.h"
-#include "logp/cmd/cat.h"
+#include "logp/cmd/tail.h"
 #include "logp/cmd/config.h"
 
 
@@ -52,7 +52,7 @@ void usage() {
         "    run     Execute the given command, upload information\n"
         "    ping    Test your apikey works, check latency to LP servers\n"
         "    ps      See what is currently running, follow new runs\n"
-        "    cat     Print stdout/stderr of an event\n"
+        "    tail    Print stdout/stderr of an event\n"
         << std::endl;
     exit(1);
 }
@@ -187,8 +187,8 @@ int main(int argc, char **argv) {
         c = new logp::cmd::ping();
     } else if (command == "get") {
         c = new logp::cmd::get();
-    } else if (command == "cat") {
-        c = new logp::cmd::cat();
+    } else if (command == "tail") {
+        c = new logp::cmd::tail();
     } else if (command == "config") {
         c = new logp::cmd::config();
     }
