@@ -6,7 +6,7 @@ CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
 CCFLAGS  = $(OPT) $(W) $(INC) -fPIC $(XCCFLAGS)
 LDFLAGS  = $(XLDFLAGS)
 
-PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o preloadwatcher.o event.o hoytech-cpp/timer.o cmd/base.o cmd/run.o cmd/ps.o cmd/ping.o cmd/get.o cmd/tail.o cmd/config.o
+PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o preloadwatcher.o preloadwatcher2.o event.o hoytech-cpp/timer.o cmd/base.o cmd/run.o cmd/ps.o cmd/ping.o cmd/get.o cmd/tail.o cmd/config.o
 
 
 ifeq ($(wildcard hoytech-cpp/README.md),)
@@ -19,7 +19,7 @@ endif
 
 
 .PHONY: all clean realclean test
-all: logp logp_preload.so
+all: logp logp_preload.so logp_preload2.so
 
 clean:
 	rm -f *.o cmd/*.o hoytech-cpp/*.o *.so logp _buildinfo.h
@@ -42,6 +42,9 @@ main.o: _buildinfo.h inc/logp/cmd/*.h
 
 logp_preload.so: logp_preload.c
 	$(CC) $(CCFLAGS) -shared -fvisibility=hidden logp_preload.c -o $@
+
+logp_preload2.so: logp_preload2.cpp
+	$(CXX) $(CXXFLAGS) -shared -fvisibility=hidden -o $@ logp_preload2.cpp -ldl
 
 ev.o: ev.cpp inc/libev/*.c inc/libev/*.h
 	$(CXX) -std=c++11 -w $(OPT) -Iinc/libev/ -fPIC -c $< -o $@
