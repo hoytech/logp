@@ -89,10 +89,11 @@ void preload_connection2::readable() {
         uint64_t end_ts = logp::util::curr_time();;
 
         auto j = nlohmann::json({
-            {"pid", pid}
+            { "type", "proc_exit" },
+            { "pid", pid }
         });
 
-        if (parent->on_proc_end) parent->on_proc_end(end_ts, j);
+        if (parent->on_event) parent->on_event(end_ts, j);
 
         parent->conn_map.erase(fd);
         return;
@@ -111,7 +112,7 @@ void preload_connection2::readable() {
 
         if (j.count("pid")) pid = j["pid"];
 
-        if (parent->on_proc_start) parent->on_proc_start(start_ts, j);
+        if (parent->on_event) parent->on_event(start_ts, j);
     }
 }
 

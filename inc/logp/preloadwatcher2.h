@@ -49,8 +49,7 @@ class preload_watcher2 {
     std::string get_socket_path() {
         return socket_path;
     }
-    std::function<void(uint64_t ts, nlohmann::json &data)> on_proc_start;
-    std::function<void(uint64_t ts, nlohmann::json &data)> on_proc_end;
+    std::function<void(uint64_t ts, nlohmann::json &data)> on_event;
 
   private:
     friend class preload_connection2;

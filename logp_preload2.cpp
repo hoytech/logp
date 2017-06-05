@@ -65,6 +65,7 @@ class Preloader {
         }
 
         nlohmann::json output = {
+            { "type", "proc_start" },
             { "pid", getpid() },
             { "ppid", getppid() }
         };
