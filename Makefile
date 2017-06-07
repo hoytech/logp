@@ -6,7 +6,7 @@ CXXFLAGS = $(STD) $(OPT) $(W) $(INC) -fPIC $(XCXXFLAGS)
 CCFLAGS  = $(OPT) $(W) $(INC) -fPIC $(XCCFLAGS)
 LDFLAGS  = $(XLDFLAGS)
 
-PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o preloadwatcher.o preloadwatcher2.o event.o hoytech-cpp/timer.o cmd/base.o cmd/run.o cmd/ps.o cmd/ping.o cmd/get.o cmd/tail.o cmd/config.o
+PROGOBJS    = main.o websocket.o util.o config.o signalwatcher.o preloadwatcher.o preloadwatcher2.o event.o hoytech-cpp/timer.o cmd/base.o cmd/run.o cmd/trace.o cmd/ps.o cmd/ping.o cmd/get.o cmd/tail.o cmd/config.o
 
 
 ifeq ($(wildcard hoytech-cpp/README.md),)

@@ -12,6 +12,7 @@
 
 #include "logp/cmd/base.h"
 #include "logp/cmd/run.h"
+#include "logp/cmd/trace.h"
 #include "logp/cmd/ps.h"
 #include "logp/cmd/ping.h"
 #include "logp/cmd/get.h"
@@ -181,6 +182,8 @@ int main(int argc, char **argv) {
 
     if (command == "run") {
         c = new logp::cmd::run();
+    } else if (command == "trace") {
+        c = new logp::cmd::trace();
     } else if (command == "ps") {
         c = new logp::cmd::ps();
     } else if (command == "ping") {

@@ -21,25 +21,35 @@ class preload_watcher2;
 
 class preload_connection2 {
   public:
-    preload_connection2(preload_watcher2 *parent_, ev::dynamic_loop &loop, int fd_) : parent(parent_), io(loop), fd(fd_) {
-        io.set<preload_connection2, &preload_connection2::readable>(this);
-        io.start(fd, ev::READ);
+    preload_connection2(preload_watcher2 *parent_, ev::dynamic_loop &loop, int fd_, uint64_t trace_conn_) : parent(parent_), input_watcher(loop), output_watcher(loop), fd(fd_), trace_conn(trace_conn_) {
+        input_watcher.set<preload_connection2, &preload_connection2::try_read>(this);
+        input_watcher.start(fd, ev::READ);
+
+        output_watcher.set<preload_connection2, &preload_connection2::try_write>(this);
+    }
+
+    void send(const char *buf, size_t len) {
+        output_buffer.append(buf, len);
+        try_write();
     }
 
     ~preload_connection2() {
-        io.stop();
+        input_watcher.stop();
+        output_watcher.stop();
         close(fd);
     }
 
   private:
-    void readable();
+    void try_read();
+    void try_write();
 
     preload_watcher2 *parent;
-    ev::io io;
+    ev::io input_watcher;
+    ev::io output_watcher;
     int fd;
-    std::string buffer;
-    int pid = -1;
-    uint64_t start_ts = 0;
+    std::string input_buffer;
+    std::string output_buffer;
+    uint64_t trace_conn;
 };
 
 class preload_watcher2 {
@@ -62,6 +72,7 @@ class preload_watcher2 {
     std::thread t;
     std::unique_ptr<ev::dynamic_loop> loop;
     std::unordered_map<int, preload_connection2> conn_map;
+    uint64_t next_trace_conn = 1;
 };
 
 }
