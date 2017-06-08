@@ -21,7 +21,7 @@
 
 #include "logp/cmd/trace.h"
 #include "logp/signalwatcher.h"
-#include "logp/preloadwatcher2.h"
+#include "logp/traceengine.h"
 #include "logp/pipecapturer.h"
 #include "logp/event.h"
 #include "logp/util.h"
@@ -59,13 +59,13 @@ void trace::process_option(int arg, int, char *) {
 
 
 
-std::string find_logp_preload2() {
+std::string find_logp_trace_preload() {
     std::string path;
 
-    path = "/usr/logp/lib/logp_preload2.so";
+    path = "/usr/logp/lib/logp_trace_preload.so";
     if (access(path.c_str(), R_OK) == 0) return path;
 
-    path = "/usr/local/logp/lib/logp_preload2.so";
+    path = "/usr/local/logp/lib/logp_trace_preload.so";
     if (access(path.c_str(), R_OK) == 0) return path;
 
     char cwd[1024];
@@ -75,10 +75,10 @@ std::string find_logp_preload2() {
     }
 
     path = cwd;
-    path += "/logp_preload2.so";
+    path += "/logp_trace_preload.so";
     if (access(path.c_str(), R_OK) == 0) return path;
 
-    PRINT_WARNING << "unable to find logp_preload2.so";
+    PRINT_WARNING << "unable to find logp_trace_preload.so";
     return "";
 }
 
@@ -87,12 +87,7 @@ std::string find_logp_preload2() {
 struct trace_msg_sigchld {
 };
 
-struct trace_msg_event {
-    uint64_t timestamp;
-    nlohmann::json data;
-};
-
-using trace_msg = mapbox::util::variant<trace_msg_sigchld, trace_msg_event>;
+using trace_msg = mapbox::util::variant<trace_msg_sigchld>;
 
 
 void trace::execute() {
@@ -117,31 +112,20 @@ void trace::execute() {
         cmd_trace_queue.push_move(m);
     });
 
-    logp::preload_watcher2 preloadwatcher;
-
-
-
-    preloadwatcher.on_event = [&](uint64_t ts, nlohmann::json &data){
-        trace_msg_event m{ts, std::move(data)};
-        cmd_trace_queue.push_move(m);
-    };
+    logp::trace_engine tracer;
 
 
 
     sigwatcher.run();
-    preloadwatcher.run();
+    tracer.run();
 
 
-    std::string logp_preload_path = find_logp_preload2();
+    std::string logp_preload_path = find_logp_trace_preload();
     if (!logp_preload_path.size()) {
         PRINT_ERROR << "unable to find perload library";
         exit(1);
     }
 
-
-    uint64_t start_timestamp = logp::util::curr_time();
-
-    pid_t ppid = getppid();
 
     pid_t fork_ret = fork();
 
@@ -149,7 +133,7 @@ void trace::execute() {
         PRINT_ERROR << "unable to fork: " << strerror(errno);
         _exit(1);
     } else if (fork_ret == 0) {
-        ::setenv("LOGP_SOCKET_PATH", preloadwatcher.get_socket_path().c_str(), 0);
+        ::setenv("LOGP_SOCKET_PATH", tracer.get_socket_path().c_str(), 0);
         ::setenv("LD_PRELOAD", logp_preload_path.c_str(), 0);
 
         sigwatcher.unblock();
@@ -161,10 +145,6 @@ void trace::execute() {
 
     PRINT_INFO << "Executing " << my_argv[optind] << " (pid " << fork_ret << ")";
 
-
-
-    uint64_t next_evpid = 1;
-    std::unordered_map<int, uint64_t> pid_to_evpid;
 
     while (1) {
         auto mv = cmd_trace_queue.shift();
@@ -190,17 +170,6 @@ void trace::execute() {
             } else {
                 PRINT_WARNING << "Received success from wait4 for a different process: " << wait_ret;
             }
-        },
-        [&](trace_msg_event &m){
-/*
-            auto evpid = next_evpid++;
-            pid_to_evpid[m.data["pid"]] = evpid;
-            m.data["evpid"] = evpid;
-            if (pid_to_evpid.count(m.data["ppid"])) {
-                m.data["evppid"] = pid_to_evpid[m.data["ppid"]];
-            }
-*/
-            std::cerr << "BING " << m.data.dump() << std::endl;
         }
         );
 

@@ -11,28 +11,28 @@
 #include <vector>
 
 #include "logp/util.h"
-#include "logp/preloadwatcher2.h"
+#include "logp/traceengine.h"
 
 
 namespace logp {
 
-bool preload_atexit_handler_registered = false;
-std::vector<std::string> preload_tmpdirs_to_cleanup;
+bool traceengine_atexit_handler_registered = false;
+std::vector<std::string> traceengine_tmpdirs_to_cleanup;
 
-void preload_watcher2::run() {
+void trace_engine::run() {
     char my_temp_dir[] = "/tmp/logp-XXXXXX";
     if (!mkdtemp(my_temp_dir)) throw logp::error("mkdtemp error: ", strerror(errno));
 
     temp_dir = std::string(my_temp_dir);
     socket_path = temp_dir + "/logp.socket";
 
-    preload_tmpdirs_to_cleanup.push_back(temp_dir);
+    traceengine_tmpdirs_to_cleanup.push_back(temp_dir);
 
-    if (!preload_atexit_handler_registered) {
-        preload_atexit_handler_registered = true;
+    if (!traceengine_atexit_handler_registered) {
+        traceengine_atexit_handler_registered = true;
 
         ::atexit([](){
-            for(auto &dir : preload_tmpdirs_to_cleanup) {
+            for(auto &dir : traceengine_tmpdirs_to_cleanup) {
                 std::string socket = dir + "/logp.socket";
                 unlink(socket.c_str());
                 rmdir(dir.c_str());
@@ -64,38 +64,38 @@ void preload_watcher2::run() {
 
         ev::io accept_io(*loop);
 
-        accept_io.set<preload_watcher2, &preload_watcher2::handle_accept>(this);
+        accept_io.set<trace_engine, &trace_engine::handle_accept>(this);
         accept_io.start(fd, ev::READ);
 
         loop->run();
     });
 }
 
-void preload_watcher2::handle_accept(ev::io &, int) {
+void trace_engine::handle_accept(ev::io &, int) {
     int conn_fd = ::accept(fd, nullptr, nullptr);
 
     if (conn_fd < 0) return;
 
+    uint64_t trace_conn_id = next_trace_conn_id++;
+
     conn_map.emplace(std::piecewise_construct,
-                     std::forward_as_tuple(conn_fd),
-                     std::forward_as_tuple(this, *loop, conn_fd, next_trace_conn++));
+                     std::forward_as_tuple(trace_conn_id),
+                     std::forward_as_tuple(this, *loop, conn_fd, trace_conn_id));
 }
 
 
-void preload_connection2::try_read() {
+void trace_engine_connection::try_read() {
     char tmpbuf[4096];
     auto ret = ::read(fd, tmpbuf, sizeof(tmpbuf));
 
     if (ret <= 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) return;
 
-        if (parent->on_close) parent->on_close(trace_conn);
+        parent->on_close_conn(trace_conn_id);
+        parent->conn_map.erase(trace_conn_id);
 
-        parent->conn_map.erase(fd);
         return;
     }
-
-    if (start_ts == 0) start_ts = logp::util::curr_time();
 
     input_buffer.append(tmpbuf, (size_t)ret);
 
@@ -106,15 +106,16 @@ void preload_connection2::try_read() {
         auto j = nlohmann::json::parse(input_buffer.substr(0, len));
         input_buffer.erase(0, len+1);
 
-        std::string response = "{\"a\":234}\n";
-        send(response.data(), response.size());
-
-        if (parent->on_event) parent->on_event(start_ts, j);
+        if (!initialized) {
+            initialized = true;
+            parent->on_new_conn(trace_conn_id, j);
+        } else {
+            parent->on_data(trace_conn_id, j);
+        }
     }
 }
 
-
-void preload_connection2::try_write() {
+void trace_engine_connection::try_write() {
     if (output_buffer.size()) {
         auto ret = ::write(fd, output_buffer.data(), output_buffer.size());
 
@@ -136,5 +137,30 @@ void preload_connection2::try_write() {
         output_watcher.stop();
     }
 }
+
+
+
+void trace_engine::on_new_conn(uint64_t trace_conn_id, nlohmann::json &j) {
+    PRINT_INFO << "[" << trace_conn_id << "] NEW: " << j.dump();
+
+    nlohmann::json runspec = {
+      { "connect", 1 },
+      { "bind", 1 },
+    };
+
+    std::string msg = runspec.dump();
+    msg += "\n";
+
+    conn_map.at(trace_conn_id).send(msg.data(), msg.size());
+}
+void trace_engine::on_data(uint64_t trace_conn_id, nlohmann::json &j) {
+    PRINT_INFO << "[" << trace_conn_id << "]: " << j.dump();
+}
+void trace_engine::on_close_conn(uint64_t trace_conn_id) {
+    PRINT_INFO << "[" << trace_conn_id << "] CLOSE";
+}
+
+
+
 
 }

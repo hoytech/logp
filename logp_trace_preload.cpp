@@ -126,18 +126,6 @@ Preloader p;
 
 
 __attribute__ ((visibility ("default")))
-ssize_t write(int fd, const void *buf, size_t count) {
-    static auto orig = reinterpret_cast<ssize_t(*)(int, const void *, size_t)>(dlsym(RTLD_NEXT, __FUNCTION__));
-    return orig(fd, buf, count);
-}
-
-__attribute__ ((visibility ("default")))
-ssize_t read(int fd, void *buf, size_t count) {
-    static auto orig = reinterpret_cast<ssize_t(*)(int, const void *, size_t)>(dlsym(RTLD_NEXT, __FUNCTION__));
-    return orig(fd, buf, count);
-}
-
-__attribute__ ((visibility ("default")))
 int connect(int fd, const struct sockaddr *addr, socklen_t addrlen) {
     static auto orig = reinterpret_cast<int(*)(int fd, const struct sockaddr *addr, socklen_t addrlen)>(dlsym(RTLD_NEXT, __FUNCTION__));
     std::cerr << "BINGBING " << __FUNCTION__ << std::endl;
