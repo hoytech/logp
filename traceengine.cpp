@@ -143,12 +143,9 @@ void trace_engine_connection::try_write() {
 void trace_engine::on_new_conn(uint64_t trace_conn_id, nlohmann::json &j) {
     PRINT_INFO << "[" << trace_conn_id << "] NEW: " << j.dump();
 
-    nlohmann::json runspec = {
-      { "connect", 1 },
-      { "bind", 1 },
-    };
+    auto *runspec = conf.get_node("trace");
 
-    std::string msg = runspec.dump();
+    std::string msg = runspec->dump();
     msg += "\n";
 
     conn_map.at(trace_conn_id).send(msg.data(), msg.size());

@@ -91,8 +91,7 @@ class Preloader {
             return;
         }
 
-        auto j = readMsg();
-        std::cerr << "IN PRELOAD GOT: " << j.dump() << std::endl;
+        conf = readMsg();
     }
 
     nlohmann::json readMsg() {
@@ -117,6 +116,23 @@ class Preloader {
         }
     }
 
+    void sendMsg(nlohmann::json &j, bool sync) {
+        std::string output = j.dump();
+        output += "\n";
+
+        auto ret = orig_write(fd, output.data(), output.size());
+        if (ret < 0 || (size_t)ret != output.size()) {
+            std::cerr << "didn't write properly" << std::endl; // FIXME: use orig_write(2, ...) ?
+            return;
+        }
+
+        if (sync) {
+            readMsg();
+        }
+    }
+
+    nlohmann::json conf;
+
   private:
     int fd = -1;
     std::string buffer;
@@ -125,16 +141,43 @@ class Preloader {
 Preloader p;
 
 
+static std::function<int(int fd, const struct sockaddr *addr, socklen_t addrlen)> _build_func_connect_bind(const char *func_name) {
+    auto orig = reinterpret_cast<int(*)(int fd, const struct sockaddr *addr, socklen_t addrlen)>(dlsym(RTLD_NEXT, func_name));
+
+    if (!p.conf["funcs"].count(func_name)) return orig;
+    auto &spec = p.conf["funcs"][func_name];
+
+    auto sync = (spec["action"] == "sync");
+
+    if (spec["when"] == "before") {
+        return [=](int fd, const struct sockaddr *addr, socklen_t addrlen){
+            {
+                nlohmann::json details = { { "func", func_name } };
+                p.sendMsg(details, sync);
+            }
+            return orig(fd, addr, addrlen);
+        };
+    } else {
+        return [=](int fd, const struct sockaddr *addr, socklen_t addrlen){
+            auto ret = orig(fd, addr, addrlen);
+            {
+                nlohmann::json details = { { "func", func_name } };
+                details["ret"] = ret;
+                p.sendMsg(details, sync);
+            }
+            return ret;
+        };
+    }
+}
+
 __attribute__ ((visibility ("default")))
 int connect(int fd, const struct sockaddr *addr, socklen_t addrlen) {
-    static auto orig = reinterpret_cast<int(*)(int fd, const struct sockaddr *addr, socklen_t addrlen)>(dlsym(RTLD_NEXT, __FUNCTION__));
-    std::cerr << "BINGBING " << __FUNCTION__ << std::endl;
-    return orig(fd, addr, addrlen);
+    static std::function<int(int fd, const struct sockaddr *addr, socklen_t addrlen)> f = _build_func_connect_bind("connect");
+    return f(fd, addr, addrlen);
 }
 
 __attribute__ ((visibility ("default")))
 int bind(int fd, const struct sockaddr *addr, socklen_t addrlen) {
-    static auto orig = reinterpret_cast<int(*)(int fd, const struct sockaddr *addr, socklen_t addrlen)>(dlsym(RTLD_NEXT, __FUNCTION__));
-    std::cerr << "BINGBING " << __FUNCTION__ << std::endl;
-    return orig(fd, addr, addrlen);
+    static std::function<int(int fd, const struct sockaddr *addr, socklen_t addrlen)> f = _build_func_connect_bind("bind");
+    return f(fd, addr, addrlen);
 }
