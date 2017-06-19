@@ -40,6 +40,8 @@ class trace_engine_connection {
     }
 
   private:
+    friend class trace_engine;
+
     void try_read();
     void try_write();
 
@@ -66,9 +68,11 @@ class trace_engine {
     friend class trace_engine_connection;
 
     void handle_accept(ev::io &watcher, int revents);
-    void on_new_conn(uint64_t trace_conn_id, nlohmann::json &j);
-    void on_data(uint64_t trace_conn_id, nlohmann::json &j);
-    void on_close_conn(uint64_t trace_conn_id);
+    void send_to_conn(uint64_t trace_conn_id, const char *msg, size_t len);
+
+    void on_new_conn(trace_engine_connection &conn, nlohmann::json &j);
+    void on_data(trace_engine_connection &conn, nlohmann::json &j);
+    void on_close_conn(trace_engine_connection &conn);
 
     std::string temp_dir;
     std::string socket_path;

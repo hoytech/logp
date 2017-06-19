@@ -91,7 +91,7 @@ void trace_engine_connection::try_read() {
     if (ret <= 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) return;
 
-        parent->on_close_conn(trace_conn_id);
+        parent->on_close_conn(*this);
         parent->conn_map.erase(trace_conn_id);
 
         return;
@@ -108,9 +108,9 @@ void trace_engine_connection::try_read() {
 
         if (!initialized) {
             initialized = true;
-            parent->on_new_conn(trace_conn_id, j);
+            parent->on_new_conn(*this, j);
         } else {
-            parent->on_data(trace_conn_id, j);
+            parent->on_data(*this, j);
         }
     }
 }
@@ -140,21 +140,56 @@ void trace_engine_connection::try_write() {
 
 
 
-void trace_engine::on_new_conn(uint64_t trace_conn_id, nlohmann::json &j) {
-    PRINT_INFO << "[" << trace_conn_id << "] NEW: " << j.dump();
+
+
+void trace_engine::send_to_conn(uint64_t trace_conn_id, const char *msg, size_t len) {
+    if (conn_map.count(trace_conn_id)) conn_map.at(trace_conn_id).send(msg, len);
+}
+
+
+
+
+
+void trace_engine::on_new_conn(trace_engine_connection &conn, nlohmann::json &j) {
+    PRINT_INFO << "[" << conn.trace_conn_id << "] NEW: " << j.dump();
 
     auto *runspec = conf.get_node("trace");
 
     std::string msg = runspec->dump();
     msg += "\n";
 
-    conn_map.at(trace_conn_id).send(msg.data(), msg.size());
+    conn.send(msg.data(), msg.size());
 }
-void trace_engine::on_data(uint64_t trace_conn_id, nlohmann::json &j) {
-    PRINT_INFO << "[" << trace_conn_id << "]: " << j.dump();
+
+
+static bool listening = false;
+static std::vector<uint64_t> conns_pending_listen;
+
+void trace_engine::on_data(trace_engine_connection &conn, nlohmann::json &j) {
+    PRINT_INFO << "[" << conn.trace_conn_id << "]: " << j.dump();
+
+    if (j["func"] == "listen") {
+        listening = true;
+
+        for (auto id : conns_pending_listen) {
+            std::string msg = "{}\n";
+            send_to_conn(id, msg.data(), msg.size());
+        }
+
+        conns_pending_listen.clear();
+    } else if (j["func"] == "connect") {
+        if (listening) {
+            std::string msg = "{}\n";
+            conn.send(msg.data(), msg.size());
+        } else {
+            conns_pending_listen.push_back(conn.trace_conn_id);
+        }
+    }
 }
-void trace_engine::on_close_conn(uint64_t trace_conn_id) {
-    PRINT_INFO << "[" << trace_conn_id << "] CLOSE";
+
+
+void trace_engine::on_close_conn(trace_engine_connection &conn) {
+    PRINT_INFO << "[" << conn.trace_conn_id << "] CLOSE";
 }
 
 

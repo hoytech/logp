@@ -7,6 +7,9 @@
 #include <fcntl.h>
 #include <dlfcn.h>
 
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -149,10 +152,18 @@ static std::function<int(int fd, const struct sockaddr *addr, socklen_t addrlen)
 
     auto sync = (spec["action"] == "sync");
 
+    auto populate_details = [](nlohmann::json &details, const struct sockaddr *addr, socklen_t){
+        if (addr->sa_family == AF_INET) {
+            auto *addr_in = reinterpret_cast<const struct sockaddr_in *>(addr);
+            details["port"] = ntohs(addr_in->sin_port);
+        }
+    };
+
     if (spec["when"] == "before") {
         return [=](int fd, const struct sockaddr *addr, socklen_t addrlen){
             {
-                nlohmann::json details = { { "func", func_name } };
+                nlohmann::json details = { { "func", func_name }, { "fd", fd } };
+                populate_details(details, addr, addrlen);
                 p.sendMsg(details, sync);
             }
             return orig(fd, addr, addrlen);
@@ -161,7 +172,38 @@ static std::function<int(int fd, const struct sockaddr *addr, socklen_t addrlen)
         return [=](int fd, const struct sockaddr *addr, socklen_t addrlen){
             auto ret = orig(fd, addr, addrlen);
             {
-                nlohmann::json details = { { "func", func_name } };
+                nlohmann::json details = { { "func", func_name }, { "fd", fd } };
+                populate_details(details, addr, addrlen);
+                details["ret"] = ret;
+                p.sendMsg(details, sync);
+            }
+            return ret;
+        };
+    }
+}
+
+
+static std::function<int(int fd, int backlog)> _build_func_listen(const char *func_name) {
+    auto orig = reinterpret_cast<int(*)(int fd, int backlog)>(dlsym(RTLD_NEXT, func_name));
+
+    if (!p.conf["funcs"].count(func_name)) return orig;
+    auto &spec = p.conf["funcs"][func_name];
+
+    auto sync = (spec["action"] == "sync");
+
+    if (spec["when"] == "before") {
+        return [=](int fd, int backlog){
+            {
+                nlohmann::json details = { { "func", func_name }, { "fd", fd } };
+                p.sendMsg(details, sync);
+            }
+            return orig(fd, backlog);
+        };
+    } else {
+        return [=](int fd, int backlog){
+            auto ret = orig(fd, backlog);
+            {
+                nlohmann::json details = { { "func", func_name }, { "fd", fd } };
                 details["ret"] = ret;
                 p.sendMsg(details, sync);
             }
@@ -180,4 +222,10 @@ __attribute__ ((visibility ("default")))
 int bind(int fd, const struct sockaddr *addr, socklen_t addrlen) {
     static std::function<int(int fd, const struct sockaddr *addr, socklen_t addrlen)> f = _build_func_connect_bind("bind");
     return f(fd, addr, addrlen);
+}
+
+__attribute__ ((visibility ("default")))
+int listen(int fd, int backlog) {
+    static std::function<int(int fd, int backlog)> f = _build_func_listen("listen");
+    return f(fd, backlog);
 }
