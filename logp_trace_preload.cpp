@@ -151,6 +151,7 @@ static std::function<int(int fd, const struct sockaddr *addr, socklen_t addrlen)
     auto &spec = p.conf["funcs"][func_name];
 
     auto sync = (spec["action"] == "sync");
+    uint64_t port = spec["port"];
 
     auto populate_details = [](nlohmann::json &details, const struct sockaddr *addr, socklen_t){
         if (addr->sa_family == AF_INET) {
@@ -164,7 +165,7 @@ static std::function<int(int fd, const struct sockaddr *addr, socklen_t addrlen)
             {
                 nlohmann::json details = { { "func", func_name }, { "fd", fd } };
                 populate_details(details, addr, addrlen);
-                p.sendMsg(details, sync);
+                if (details.count("port") && details["port"] == port) p.sendMsg(details, sync);
             }
             return orig(fd, addr, addrlen);
         };
@@ -175,7 +176,7 @@ static std::function<int(int fd, const struct sockaddr *addr, socklen_t addrlen)
                 nlohmann::json details = { { "func", func_name }, { "fd", fd } };
                 populate_details(details, addr, addrlen);
                 details["ret"] = ret;
-                p.sendMsg(details, sync);
+                if (details.count("port") && details["port"] == port) p.sendMsg(details, sync);
             }
             return ret;
         };
@@ -212,6 +213,14 @@ static std::function<int(int fd, int backlog)> _build_func_listen(const char *fu
     }
 }
 
+static std::function<int(const struct timespec *, struct timespec *)> _build_func_nanosleep() {
+    auto orig = reinterpret_cast<int(*)(const struct timespec *req, struct timespec *rem)>(dlsym(RTLD_NEXT, "nanosleep"));
+
+    if (!p.conf["funcs"].count("nanosleep") || p.conf["funcs"]["nanosleep"]["action"] != "nop") return orig;
+    return [](const struct timespec *, struct timespec *){ return 0; };
+}
+
+
 __attribute__ ((visibility ("default")))
 int connect(int fd, const struct sockaddr *addr, socklen_t addrlen) {
     static std::function<int(int fd, const struct sockaddr *addr, socklen_t addrlen)> f = _build_func_connect_bind("connect");
@@ -228,4 +237,10 @@ __attribute__ ((visibility ("default")))
 int listen(int fd, int backlog) {
     static std::function<int(int fd, int backlog)> f = _build_func_listen("listen");
     return f(fd, backlog);
+}
+
+__attribute__ ((visibility ("default")))
+int nanosleep(const struct timespec *req, struct timespec *rem) {
+    static std::function<int(const struct timespec *, struct timespec *)> f = _build_func_nanosleep();
+    return f(req, rem);
 }

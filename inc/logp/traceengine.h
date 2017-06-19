@@ -81,6 +81,9 @@ class trace_engine {
     std::unique_ptr<ev::dynamic_loop> loop;
     std::unordered_map<uint64_t, trace_engine_connection> conn_map;
     uint64_t next_trace_conn_id = 1;
+
+    bool listening = false;
+    std::vector<uint64_t> conns_pending_listen;
 };
 
 }

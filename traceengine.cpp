@@ -149,21 +149,63 @@ void trace_engine::send_to_conn(uint64_t trace_conn_id, const char *msg, size_t 
 
 
 
+/*
+trace:
+  funcs:
+    connect:
+      filter:
+        port: 9876
+      action: sync
+      when: before
+    bind:
+      action: trace
+      when: before
+    listen:
+      filter:
+        port: 9876
+      action: trace
+      when: after
+*/
 
-void trace_engine::on_new_conn(trace_engine_connection &conn, nlohmann::json &j) {
-    PRINT_INFO << "[" << conn.trace_conn_id << "] NEW: " << j.dump();
+void trace_engine::on_new_conn(trace_engine_connection &conn, nlohmann::json &input) {
+    PRINT_INFO << "[" << conn.trace_conn_id << "] NEW: " << input.dump();
 
-    auto *runspec = conf.get_node("trace");
+    nlohmann::json output;
 
-    std::string msg = runspec->dump();
+    if (conf.get_node("trace")) {
+        auto sync_listen_connect_port = conf.get_uint64("trace.sync_listen_connect_port", 0);
+        if (sync_listen_connect_port) {
+            output["funcs"]["connect"] = {
+                { "action", "sync" },
+                { "port", sync_listen_connect_port },
+                { "when", "before" }
+            };
+
+            output["funcs"]["bind"] = {
+                { "action", "trace" },
+                { "port", sync_listen_connect_port }, 
+                { "when", "before" }
+            };
+
+            output["funcs"]["listen"] = {
+                { "action", "trace" },
+                { "when", "after" }
+            };
+        }
+
+        if (conf.get_bool("trace.sleep_speedup", false)) {
+            output["funcs"]["nanosleep"] = {
+                { "action", "nop" }
+            };
+        }
+    }
+
+    std::string msg = output.dump();
     msg += "\n";
 
     conn.send(msg.data(), msg.size());
 }
 
-
-static bool listening = false;
-static std::vector<uint64_t> conns_pending_listen;
 
 void trace_engine::on_data(trace_engine_connection &conn, nlohmann::json &j) {
     PRINT_INFO << "[" << conn.trace_conn_id << "]: " << j.dump();
