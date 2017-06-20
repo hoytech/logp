@@ -210,21 +210,27 @@ void trace_engine::on_new_conn(trace_engine_connection &conn, nlohmann::json &in
 void trace_engine::on_data(trace_engine_connection &conn, nlohmann::json &j) {
     PRINT_INFO << "[" << conn.trace_conn_id << "]: " << j.dump();
 
-    if (j["func"] == "listen") {
-        listening = true;
+    if (j["func"] == "bind") {
+        conn.bound_fd = j["fd"];
+    } else if (j["func"] == "listen") {
+        if (conn.bound_fd != -1 && j["fd"] == conn.bound_fd) {
+            listening_conn_id = conn.trace_conn_id;
 
-        for (auto id : conns_pending_listen) {
-            std::string msg = "{}\n";
-            send_to_conn(id, msg.data(), msg.size());
+            for (auto &it : conn_map) {
+                auto &c = it.second;
+                if (c.pending_listen) {
+                    std::string msg = "{}\n";
+                    send_to_conn(it.first, msg.data(), msg.size());
+                    c.pending_listen = false;
+                }
+            }
         }
-
-        conns_pending_listen.clear();
     } else if (j["func"] == "connect") {
-        if (listening) {
+        if (listening_conn_id) {
             std::string msg = "{}\n";
             conn.send(msg.data(), msg.size());
         } else {
-            conns_pending_listen.push_back(conn.trace_conn_id);
+            conn.pending_listen = true;
         }
     }
 }

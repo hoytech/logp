@@ -53,6 +53,10 @@ class trace_engine_connection {
     std::string output_buffer;
     uint64_t trace_conn_id;
     bool initialized = false;
+
+    ////
+    bool pending_listen = false;
+    int bound_fd = -1;
 };
 
 class trace_engine {
@@ -82,8 +86,8 @@ class trace_engine {
     std::unordered_map<uint64_t, trace_engine_connection> conn_map;
     uint64_t next_trace_conn_id = 1;
 
-    bool listening = false;
-    std::vector<uint64_t> conns_pending_listen;
+    /////
+    uint64_t listening_conn_id = 0;
 };
 
 }
