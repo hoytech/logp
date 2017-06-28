@@ -122,7 +122,7 @@ void trace::execute() {
 
     std::string logp_preload_path = find_logp_trace_preload();
     if (!logp_preload_path.size()) {
-        PRINT_ERROR << "unable to find perload library";
+        PRINT_ERROR << "unable to find preload library";
         exit(1);
     }
 

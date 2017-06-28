@@ -28,6 +28,7 @@ if ($cmd eq 'dist-linux') {
     files => {
       'logp' => '/usr/bin/logp',
       'logp_preload.so' => '/usr/logp/lib/logp_preload.so',
+      'logp_trace_preload.so' => '/usr/logp/lib/logp_trace_preload.so',
       '/lib/x86_64-linux-gnu/libssl.so.1.0.0' => '/usr/logp/lib/libssl.so.1.0.0',
       '/lib/x86_64-linux-gnu/libcrypto.so.1.0.0' => '/usr/logp/lib/libcrypto.so.1.0.0',
       'ssl/letsencrypt.pem' => '/usr/logp/ssl/letsencrypt.pem',

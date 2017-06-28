@@ -173,17 +173,17 @@ void trace_engine::on_new_conn(trace_engine_connection &conn, nlohmann::json &in
     nlohmann::json output;
 
     if (conf.get_node("trace")) {
-        auto sync_listen_connect_port = conf.get_uint64("trace.sync_listen_connect_port", 0);
-        if (sync_listen_connect_port) {
+        auto sync_port = conf.get_uint64("trace.sync_port", 0);
+        if (sync_port) {
             output["funcs"]["connect"] = {
                 { "action", "sync" },
-                { "port", sync_listen_connect_port },
+                { "port", sync_port },
                 { "when", "before" }
             };
 
             output["funcs"]["bind"] = {
                 { "action", "trace" },
-                { "port", sync_listen_connect_port }, 
+                { "port", sync_port },
                 { "when", "before" }
             };
 
@@ -238,6 +238,8 @@ void trace_engine::on_data(trace_engine_connection &conn, nlohmann::json &j) {
 
 void trace_engine::on_close_conn(trace_engine_connection &conn) {
     PRINT_INFO << "[" << conn.trace_conn_id << "] CLOSE";
+
+    if (conn.trace_conn_id == listening_conn_id) listening_conn_id = 0;
 }
 
 
